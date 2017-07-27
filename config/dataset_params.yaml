@@ -1,0 +1,21 @@
+cam0:
+  cam_cx: 601.8873000000
+  cam_cy: 183.1104000000
+  cam_d0: 0.0
+  cam_d1: 0.0
+  cam_d2: 0.0
+  cam_d3: 0.0
+  cam_fx: 707.0912
+  cam_fy: 707.0912
+  cam_bl: 0.54
+  cam_height: 376
+  cam_model: Pinhole
+  cam_width: 1241
+  rx: 0.0
+  ry: 0.0
+  rz: 0.0
+  tx: 0.0
+  ty: 0.0
+  tz: 0.0
+images_subfolder_l: image_2/
+images_subfolder_r: image_3/
