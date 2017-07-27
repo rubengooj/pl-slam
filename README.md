@@ -1,3 +1,5 @@
+Notice that this repository is only an open-source version of PL-SLAM released with the aim of being useful for the community, however, it is far from being optimized and we are not including some features such as the parallelized version of PL-SLAM.
+
 # PL-SLAM #
 
 This code contains an algorithm to compute stereo visual SLAM by using both point and line segment features.
