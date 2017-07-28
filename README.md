@@ -50,6 +50,12 @@ Installation on Ubuntu:
 sudo apt-get install libboost-dev
 ```
 
+### g2o - General Graph Optimization
+It can be found at:
+```
+https://github.com/RainerKuemmerle/g2o.git
+```
+
 ### YAML
 Installation on Ubuntu:
 ```
