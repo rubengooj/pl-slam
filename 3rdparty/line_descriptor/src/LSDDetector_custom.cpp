@@ -322,7 +322,117 @@ void LSDDetectorC::detectImpl( const Mat& imageSrc, std::vector<KeyLine>& keylin
   }
 
 }
+
+// Overload with fast detection
+void LSDDetectorC::detectFast( const Mat& image, CV_OUT std::vector<KeyLine>& keylines, int scale, int numOctaves, LSDOptions opts, const Mat& mask )
+{
+  if( mask.data != NULL && ( mask.size() != image.size() || mask.type() != CV_8UC1 ) )
+    throw std::runtime_error( "Mask error while detecting lines: please check its dimensions and that data type is CV_8UC1" );
+
+  else
+    detectImplFast( image, keylines, numOctaves, scale, opts, mask );
 }
+
+void LSDDetectorC::detectImplFast( const Mat& imageSrc, std::vector<KeyLine>& keylines, int numOctaves, int scale, LSDOptions opts, const Mat& mask ) const
+{
+  cv::Mat image;
+  if( imageSrc.channels() != 1 )
+    cvtColor( imageSrc, image, COLOR_BGR2GRAY );
+  else
+    image = imageSrc.clone();
+
+  /*check whether image depth is different from 0 */
+  if( image.depth() != 0 )
+    throw std::runtime_error( "Error, depth image!= 0" );
+
+  /* create a pointer to self */
+  LSDDetectorC *lsd = const_cast<LSDDetectorC*>( this );
+
+  /* compute Gaussian pyramids */
+  lsd->computeGaussianPyramid( image, numOctaves, scale );
+
+  /* create an LSD extractor */
+  cv::Ptr<cv::LineSegmentDetector> ls = cv::createLineSegmentDetector( opts.refine,
+                                                                       opts.scale,
+                                                                       opts.sigma_scale,
+                                                                       opts.quant,
+                                                                       opts.ang_th,
+                                                                       opts.log_eps,
+                                                                       opts.density_th,
+                                                                       opts.n_bins);
+
+  /* prepare a vector to host extracted segments */
+  std::vector<std::vector<cv::Vec4f> > lines_lsd;
+
+  /* extract lines */
+  for ( int i = 0; i < numOctaves; i++ )
+  {
+    std::vector<Vec4f> octave_lines;
+    ls->detect( gaussianPyrs[i], octave_lines );
+    lines_lsd.push_back( octave_lines );
+  }
+
+  /* create keylines */
+  int class_counter = -1;
+  for ( int octaveIdx = 0; octaveIdx < (int) lines_lsd.size(); octaveIdx++ )
+  {
+    float octaveScale = pow( (float)scale, octaveIdx );
+    for ( int k = 0; k < (int) lines_lsd[octaveIdx].size(); k++ )
+    {
+      KeyLine kl;
+      cv::Vec4f extremes = lines_lsd[octaveIdx][k];
+
+      /* check data validity */
+      checkLineExtremes( extremes, gaussianPyrs[octaveIdx].size() );
+
+      /* check line segment min length */
+      double length = (float) sqrt( pow( extremes[0] - extremes[2], 2 ) + pow( extremes[1] - extremes[3], 2 ) );
+      if( length > opts.min_length )
+      {
+          /* fill KeyLine's fields */
+          kl.startPointX = extremes[0] * octaveScale;
+          kl.startPointY = extremes[1] * octaveScale;
+          kl.endPointX   = extremes[2] * octaveScale;
+          kl.endPointY   = extremes[3] * octaveScale;
+          kl.sPointInOctaveX = extremes[0];
+          kl.sPointInOctaveY = extremes[1];
+          kl.ePointInOctaveX = extremes[2];
+          kl.ePointInOctaveY = extremes[3];
+          kl.lineLength = length;
+
+          /* compute number of pixels covered by line */
+          LineIterator li( gaussianPyrs[octaveIdx], Point2f( extremes[0], extremes[1] ), Point2f( extremes[2], extremes[3] ) );
+          kl.numOfPixels = li.count;
+
+          kl.angle = atan2( ( kl.endPointY - kl.startPointY ), ( kl.endPointX - kl.startPointX ) );
+          kl.class_id = ++class_counter;
+          kl.octave = octaveIdx;
+          kl.size = ( kl.endPointX - kl.startPointX ) * ( kl.endPointY - kl.startPointY );
+          kl.response = kl.lineLength / max( gaussianPyrs[octaveIdx].cols, gaussianPyrs[octaveIdx].rows );
+          kl.pt = Point2f( ( kl.endPointX + kl.startPointX ) / 2, ( kl.endPointY + kl.startPointY ) / 2 );
+
+          keylines.push_back( kl );
+      }
+    }
+  }
+
+  /* delete undesired KeyLines, according to input mask */
+  if( !mask.empty() )
+  {
+    for ( size_t keyCounter = 0; keyCounter < keylines.size(); keyCounter++ )
+    {
+      KeyLine kl = keylines[keyCounter];
+      if( mask.at<uchar>( (int) kl.startPointY, (int) kl.startPointX ) == 0 && mask.at<uchar>( (int) kl.endPointY, (int) kl.endPointX ) == 0 )
+      {
+        keylines.erase( keylines.begin() + keyCounter );
+        keyCounter--;
+      }
+    }
+  }
+
+}
+}
+
 
 }
 

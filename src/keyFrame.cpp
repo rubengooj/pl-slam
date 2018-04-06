@@ -1,33 +1,39 @@
 /*****************************************************************************
-**   PL-SLAM: stereo visual SLAM with points and line segment features  	**
+**      Stereo VO and SLAM by combining point and line segment features     **
 ******************************************************************************
-**																			**
-**	Copyright(c) 2017, Ruben Gomez-Ojeda, University of Malaga              **
-**	Copyright(c) 2017, MAPIR group, University of Malaga					**
-**																			**
-**  This program is free software: you can redistribute it and/or modify	**
-**  it under the terms of the GNU General Public License (version 3) as		**
-**	published by the Free Software Foundation.								**
-**																			**
-**  This program is distributed in the hope that it will be useful, but		**
-**	WITHOUT ANY WARRANTY; without even the implied warranty of				**
-**  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the			**
-**  GNU General Public License for more details.							**
-**																			**
-**  You should have received a copy of the GNU General Public License		**
-**  along with this program.  If not, see <http://www.gnu.org/licenses/>.	**
-**																			**
+**                                                                          **
+**  Copyright(c) 2016-2018, Ruben Gomez-Ojeda, University of Malaga         **
+**  Copyright(c) 2016-2018, David Zuñiga-Noël, University of Malaga         **
+**  Copyright(c) 2016-2018, MAPIR group, University of Malaga               **
+**                                                                          **
+**  This program is free software: you can redistribute it and/or modify    **
+**  it under the terms of the GNU General Public License (version 3) as     **
+**  published by the Free Software Foundation.                              **
+**                                                                          **
+**  This program is distributed in the hope that it will be useful, but     **
+**  WITHOUT ANY WARRANTY; without even the implied warranty of              **
+**  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the            **
+**  GNU General Public License for more details.                            **
+**                                                                          **
+**  You should have received a copy of the GNU General Public License       **
+**  along with this program.  If not, see <http://www.gnu.org/licenses/>.   **
+**                                                                          **
 *****************************************************************************/
 
-#include <keyFrame.h>
+#include "keyFrame.h"
+
+#include <iostream>
+
+#include <opencv2/imgproc.hpp>
 
 namespace PLSLAM{
 
 KeyFrame::KeyFrame( const StereoFrame* sf )
 {
     kf_idx    = -1;
-    T_kf_w    = sf->Tfw;
     x_kf_w    = logmap_se3( T_kf_w );
+
+    T_kf_w    = sf->Tfw ;
     xcov_kf_w = sf->Tfw_cov;
 
     stereo_frame = new StereoFrame( sf->img_l, sf->img_r, kf_idx, sf->cam );
@@ -35,9 +41,16 @@ KeyFrame::KeyFrame( const StereoFrame* sf )
     stereo_frame->pdesc_r   = sf->pdesc_r;
     stereo_frame->ldesc_l   = sf->ldesc_l;
     stereo_frame->ldesc_r   = sf->ldesc_r;
-    stereo_frame->stereo_pt = sf->stereo_pt;
-    stereo_frame->stereo_ls = sf->stereo_ls;
 
+    std::vector<PointFeature*> &stereo_pt = stereo_frame->stereo_pt;
+    stereo_pt.resize(sf->stereo_pt.size());
+    for (int idx = 0; idx < stereo_pt.size(); ++idx)
+        stereo_pt[idx] = sf->stereo_pt[idx]->safeCopy();
+
+    std::vector<LineFeature*> &stereo_ls = stereo_frame->stereo_ls;
+    stereo_ls.resize(sf->stereo_ls.size());
+    for (int idx = 0; idx < stereo_ls.size(); ++idx)
+        stereo_ls[idx] = sf->stereo_ls[idx]->safeCopy();
 }
 
 KeyFrame::KeyFrame( const StereoFrame* sf, int kf_idx_ )
@@ -52,9 +65,21 @@ KeyFrame::KeyFrame( const StereoFrame* sf, int kf_idx_ )
     stereo_frame->pdesc_r   = sf->pdesc_r;
     stereo_frame->ldesc_l   = sf->ldesc_l;
     stereo_frame->ldesc_r   = sf->ldesc_r;
-    stereo_frame->stereo_pt = sf->stereo_pt;
-    stereo_frame->stereo_ls = sf->stereo_ls;
 
+    std::vector<PointFeature*> &stereo_pt = stereo_frame->stereo_pt;
+    stereo_pt.resize(sf->stereo_pt.size());
+    for (int idx = 0; idx < stereo_pt.size(); ++idx)
+        stereo_pt[idx] = sf->stereo_pt[idx]->safeCopy();
+
+    std::vector<LineFeature*> &stereo_ls = stereo_frame->stereo_ls;
+    stereo_ls.resize(sf->stereo_ls.size());
+    for (int idx = 0; idx < stereo_ls.size(); ++idx)
+        stereo_ls[idx] = sf->stereo_ls[idx]->safeCopy();
+}
+
+KeyFrame::~KeyFrame() {
+
+    delete stereo_frame;
 }
 
 Mat KeyFrame::plotKeyFrame()
@@ -62,6 +87,15 @@ Mat KeyFrame::plotKeyFrame()
     // create new image to modify it
     Mat img_l_aux;
     stereo_frame->img_l.copyTo( img_l_aux );
+    if( img_l_aux.channels() == 1 )
+        cvtColor(img_l_aux, img_l_aux, CV_GRAY2BGR, 3);
+    else if (img_l_aux.channels() == 4)
+        cvtColor(img_l_aux, img_l_aux, CV_BGRA2BGR, 3);
+    else if (img_l_aux.channels() != 3)
+        throw std::runtime_error(std::string("[KeyFrame->plotKeyFrame] unsupported image format: ") +
+                                 std::to_string(img_l_aux.channels()));
+    img_l_aux.convertTo(img_l_aux, CV_8UC3);
+
     // Variables
     unsigned int    r = 0, g, b = 0;
     Point2f         p,q;
@@ -88,6 +122,7 @@ Mat KeyFrame::plotKeyFrame()
             line( img_l_aux, p, q, Scalar(b,g,r), thick);
         }
     }
+
     return img_l_aux;
 }
 

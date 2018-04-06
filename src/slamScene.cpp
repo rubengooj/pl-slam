@@ -1,25 +1,28 @@
 /*****************************************************************************
-**   PL-SLAM: stereo visual SLAM with points and line segment features  	**
+**      Stereo VO and SLAM by combining point and line segment features     **
 ******************************************************************************
-**																			**
-**	Copyright(c) 2017, Ruben Gomez-Ojeda, University of Malaga              **
-**	Copyright(c) 2017, MAPIR group, University of Malaga					**
-**																			**
-**  This program is free software: you can redistribute it and/or modify	**
-**  it under the terms of the GNU General Public License (version 3) as		**
-**	published by the Free Software Foundation.								**
-**																			**
-**  This program is distributed in the hope that it will be useful, but		**
-**	WITHOUT ANY WARRANTY; without even the implied warranty of				**
-**  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the			**
-**  GNU General Public License for more details.							**
-**																			**
-**  You should have received a copy of the GNU General Public License		**
-**  along with this program.  If not, see <http://www.gnu.org/licenses/>.	**
-**																			**
+**                                                                          **
+**  Copyright(c) 2016-2018, Ruben Gomez-Ojeda, University of Malaga         **
+**  Copyright(c) 2016-2018, David Zuñiga-Noël, University of Malaga         **
+**  Copyright(c) 2016-2018, MAPIR group, University of Malaga               **
+**                                                                          **
+**  This program is free software: you can redistribute it and/or modify    **
+**  it under the terms of the GNU General Public License (version 3) as     **
+**  published by the Free Software Foundation.                              **
+**                                                                          **
+**  This program is distributed in the hope that it will be useful, but     **
+**  WITHOUT ANY WARRANTY; without even the implied warranty of              **
+**  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the            **
+**  GNU General Public License for more details.                            **
+**                                                                          **
+**  You should have received a copy of the GNU General Public License       **
+**  along with this program.  If not, see <http://www.gnu.org/licenses/>.   **
+**                                                                          **
 *****************************************************************************/
 
-#include <slamScene.h>
+#include "slamScene.h"
+
+#include <opencv2/imgproc.hpp>
 
 // Auxiliar functions
 template <typename T>
@@ -47,7 +50,7 @@ slamScene::slamScene(){
     selev   = 0.f;
     sazim   = -90.f;
     sfrust  = 0.2f;
-    slinef  = 0.1f;
+    slinef  = 1.f;
     win     = new CDisplayWindow3D("3D Scene",1920,1080);
 
     hasText         = true;
@@ -77,7 +80,7 @@ slamScene::slamScene(string configFile){
     selev           = config.read_double("Scene","selev",30.f);
     sazim           = config.read_double("Scene","sazim",-135.f);
     sfrust          = config.read_double("Scene","sfrust",0.2f);
-    slinef          = config.read_double("Scene","slinef",0.1f);
+    slinef          = config.read_double("Scene","slinef",1.f);
     win             = new CDisplayWindow3D("3D Scene",1920,1080);
 
     hasText         = config.read_bool("Scene","hasText",true);
@@ -128,12 +131,12 @@ void slamScene::initializeScene(Matrix4d x_0){
     // Initialize the camera object
     frustumL_.setFromValues(0,0,0,  0, -90.f*CV_PI/180.f, -90.f*CV_PI/180.f);
     frustumR_.setFromValues(sfrust,0,0,  0, -90.f*CV_PI/180.f, -90.f*CV_PI/180.f);
-    /*frustObj  = opengl::CFrustum::Create();
+    frustObj  = opengl::CFrustum::Create();
     {
         frustObj->setPose(pose_0+frustumL_);
         frustObj->setLineWidth (slinef);
         frustObj->setScale(sfrust);
-        frustObj->setColor_u8( TColor(0,0,200) );
+        frustObj->setColor_u8( TColor(200,0,0) );
         theScene->insert(frustObj);
     }
     frustObj1 = opengl::CFrustum::Create();
@@ -141,13 +144,13 @@ void slamScene::initializeScene(Matrix4d x_0){
         frustObj1->setPose(pose_0+frustumR_ );
         frustObj1->setLineWidth (slinef);
         frustObj1->setScale(sfrust);
-        frustObj1->setColor_u8( TColor(0,0,200) );
+        frustObj1->setColor_u8( TColor(200,0,0) );
         theScene->insert(frustObj1);
-    }*/
+    }
+
     srefObj = opengl::stock_objects::CornerXYZSimple();
     srefObj->setPose(pose_0);
     srefObj->setScale(sref);
-    //theScene->insert(srefObj);
 
     // Initialize the axes
     if(hasAxes){
@@ -155,48 +158,12 @@ void slamScene::initializeScene(Matrix4d x_0){
         axesObj->setFrequency(sfreq);
         axesObj->enableTickMarks(false);
         axesObj->setAxisLimits(-saxis,-saxis,-saxis, saxis,saxis,saxis);
+        axesObj->setColor(0.0,0.0,0.0);
         //theScene->insert( axesObj );
-    }
-
-    // Initialize the ground truth camera object
-    if(hasGT){       
-        /*frustObj = opengl::CFrustum::Create();
-        {
-            frustObj->setPose(pose_ini);
-            frustObj->setLineWidth (slinef);
-            frustObj->setScale(sfrust);
-            frustObj->setColor_u8( TColor(0,0,0) );
-            theScene->insert(frustObj);
-        }
-        srefObjGT = opengl::stock_objects::CornerXYZSimple();
-        {
-            srefObjGT->setPose(pose_ini);
-            srefObjGT->setScale(sref);
-            theScene->insert(srefObjGT);
-        }*/
-    }
-
-    // Initialize a second camera to compare when changing parameters
-    if(hasComparison){
-        //frustObj = opengl::CFrustum::Create();
-        //{
-        //    frustObj->setPose(pose_0);
-        //    frustObj->setLineWidth (slinef);
-        //    frustObj->setScale(sfrust);
-        //    frustObj->setColor_u8( TColor(200,0,0) );
-        //    theScene->insert(frustObj);
-        //}
-        //srefObj1 = opengl::stock_objects::CornerXYZSimple();
-        //{
-        //    srefObj1->setPose(pose_0);
-        //    srefObj1->setScale(sref);
-        //    theScene->insert(srefObj1);
-        //}
     }
 
     // Initialize the text [TODO]
     if(hasText){
-        //string text = "Frame: \t \t0 \nFrequency: \t0 Hz \nLines:  \t0 (0)\nPoints: \t0 (0)";
         string text = "KeyFrame: \t0 \nFrequency: \t0 Hz \nPoints:   \t0 \nLines:    \t0";
         win->addTextMessage(0.85,0.95, text, TColorf(.0,.0,.0), 0, mrpt::opengl::MRPT_GLUT_BITMAP_TIMES_ROMAN_10 );
     }
@@ -209,17 +176,17 @@ void slamScene::initializeScene(Matrix4d x_0){
 
     lineObj_local = opengl::CSetOfLines::Create();
     lineObj_local->setLineWidth(1.0);
-    lineObj_local->setColor(200,0,0);
+    lineObj_local->setColor(200,0,200);
     theScene->insert( lineObj_local );
 
     // Initialize the point cloud
     pointObj = opengl::CPointCloud::Create();
-    pointObj->setPointSize(1.0);
+    pointObj->setPointSize(2.0);
     pointObj->setColor(0,0,0);
     theScene->insert( pointObj );
 
     pointObj_local = opengl::CPointCloud::Create();
-    pointObj_local->setPointSize(1.0);
+    pointObj_local->setPointSize(2.0);
     pointObj_local->setColor(200,0,0);
     theScene->insert( pointObj_local );
 
@@ -252,35 +219,235 @@ bool slamScene::updateScene(){
     theScene = win->get3DSceneAndLock();
     bool restart = false;
 
+    theScene->removeObject( frustObj );
+    theScene->removeObject( frustObj1 );
+
     // Update the camera pose
     {
         CPose3D x_aux1(getPoseFormat(x));
         pose = pose + x_aux1;
         v_aux_ = v_aux;
         pose.getAsVector(v_aux);
+        frustObj  = opengl::CFrustum::Create();
         {
-            opengl::CSimpleLinePtr obj = opengl::CSimpleLine::Create();
-            obj->setLineCoords(v_aux_(0),v_aux_(1),v_aux_(2), v_aux(0),v_aux(1),v_aux(2));
-            obj->setLineWidth(sline);
-            obj->setColor(0,0.7,0);
-            theScene->insert( obj );
+            frustObj->setPose(pose+frustumL_);
+            frustObj->setLineWidth (slinef);
+            frustObj->setScale(sfrust);
+            frustObj->setColor_u8( TColor(200,0,0) );
+            theScene->insert(frustObj);
         }
-        //bbObj1->setPose(pose1);
-        //srefObj1->setPose(pose1);
+        frustObj1 = opengl::CFrustum::Create();
+        {
+            frustObj1->setPose(pose+frustumR_ );
+            frustObj1->setLineWidth (slinef);
+            frustObj1->setScale(sfrust);
+            frustObj1->setColor_u8( TColor(200,0,0) );
+            theScene->insert(frustObj1);
+        }
     }
 
     // Update the image
-    if(hasImg){
-        //image->setImageView_fast( img_mrpt_image );
+    if(hasImg)
         image->setImageView( img_mrpt_image );
-    }
 
     // Re-paint the scene
     win->unlockAccess3DScene();
     win->repaint();
 
-    // Key events   -       TODO: change the trick to employ viewports
-    if(win->keyHit()){       
+    return restart;
+
+}
+
+bool slamScene::updateSceneVO( Matrix4d T_last_kf ){
+
+    theScene = win->get3DSceneAndLock();
+    bool restart = false;
+
+    theScene->removeObject( frustObj );
+    theScene->removeObject( frustObj1 );
+
+    // Update the camera pose
+    pose = CPose3D( getPoseFormat( T_last_kf ) );
+    {
+        CPose3D x_aux1(getPoseFormat(x));
+        pose = pose + x_aux1;
+        v_aux_ = v_aux;
+        pose.getAsVector(v_aux);
+        frustObj  = opengl::CFrustum::Create();
+        {
+            frustObj->setPose(pose+frustumL_);
+            frustObj->setLineWidth (slinef);
+            frustObj->setScale(sfrust);
+            frustObj->setColor_u8( TColor(200,0,0) );
+            theScene->insert(frustObj);
+        }
+        frustObj1 = opengl::CFrustum::Create();
+        {
+            frustObj1->setPose(pose+frustumR_ );
+            frustObj1->setLineWidth (slinef);
+            frustObj1->setScale(sfrust);
+            frustObj1->setColor_u8( TColor(200,0,0) );
+            theScene->insert(frustObj1);
+        }
+    }
+
+    // Update the image
+    if(hasImg)
+        image->setImageView( img_mrpt_image );    
+
+    // Re-paint the scene
+    win->unlockAccess3DScene();
+    win->repaint();
+
+    return restart;
+
+}
+
+bool slamScene::updateScene(const MapHandler* map){
+
+    theScene = win->get3DSceneAndLock();
+    bool restart = false;
+
+    theScene->removeObject( kfsObj );
+    theScene->removeObject( kfsLinesObj );
+    theScene->removeObject( frustObj );
+    theScene->removeObject( frustObj1 );
+
+    // Represent KFs
+    CPose3D kf_pose;
+    Vector3d Pi;
+    try{
+    Pi = map->map_keyframes[0]->T_kf_w.col(3).head(3);
+    }catch(...){}
+    Vector3d Pj;
+    kfsObj      = opengl::CSetOfObjects::Create();
+    kfsLinesObj = opengl::CSetOfLines::Create();
+    for( vector<KeyFrame*>::const_iterator it = map->map_keyframes.begin(); it != map->map_keyframes.end(); it++ )
+    {
+        if( (*it)!=NULL )
+        {
+            // if last keyframe
+            if( (*it)->kf_idx == map->map_keyframes.back()->kf_idx )
+            {
+                kf_pose = CPose3D( getPoseFormat( (*it)->T_kf_w ) );
+                opengl::CFrustumPtr frust_ = opengl::CFrustum::Create();
+                {
+                    frust_->setPose( kf_pose + frustumL_ );
+                    frust_->setLineWidth (slinef);
+                    frust_->setScale(sfrust / 2.0 );
+                    if( (*it)->local )
+                        frust_->setColor_u8( TColor(200,0,0) );
+                    else
+                        frust_->setColor_u8( TColor(0,0,200) );
+                    kfsObj->insert( frust_ );
+                }
+                // represent spanning tree
+                Pj = (*it)->T_kf_w.col(3).head(3);
+                kfsLinesObj->appendLine( Pi(0),Pi(1),Pi(2), Pj(0),Pj(1),Pj(2) );
+                Pi = Pj;
+                // represent VO frustum
+                frustObj  = opengl::CFrustum::Create();
+                {
+                    frustObj->setPose( kf_pose + frustumL_ );
+                    frustObj->setLineWidth (slinef);
+                    frustObj->setScale(sfrust);
+                    frustObj->setColor_u8( TColor(200,0,0) );
+                    theScene->insert(frustObj);
+                }
+                frustObj1 = opengl::CFrustum::Create();
+                {
+                    frustObj1->setPose( kf_pose + frustumR_ );
+                    frustObj1->setLineWidth (slinef);
+                    frustObj1->setScale(sfrust);
+                    frustObj1->setColor_u8( TColor(200,0,0) );
+                    theScene->insert(frustObj1);
+                }
+                pose = kf_pose;
+            }
+            // if not
+            else
+            {
+                kf_pose = CPose3D( getPoseFormat( (*it)->T_kf_w ) );
+                opengl::CFrustumPtr frust_ = opengl::CFrustum::Create();
+                {
+                    frust_->setPose( kf_pose + frustumL_ );
+                    frust_->setLineWidth (slinef);
+                    frust_->setScale(sfrust / 2.0);
+                    if( (*it)->local )
+                        frust_->setColor_u8( TColor(200,0,0) );
+                    else
+                        frust_->setColor_u8( TColor(0,0,200) );
+                    kfsObj->insert( frust_ );
+                }
+                // represent spanning tree
+                Pj = (*it)->T_kf_w.col(3).head(3);
+                kfsLinesObj->appendLine( Pi(0),Pi(1),Pi(2), Pj(0),Pj(1),Pj(2) );
+                Pi = Pj;
+            }
+        }
+    }
+    kfsLinesObj->setLineWidth(0.5f);
+    kfsLinesObj->setColor(0,0.5,0);
+    theScene->insert( kfsLinesObj );
+    theScene->insert( kfsObj );
+
+    // Represent point LMs
+    if( hasPoints )
+    {
+        pointObj->clear();
+        pointObj_local->clear();
+        for( vector<MapPoint*>::const_iterator it = map->map_points.begin(); it!=map->map_points.end(); it++)
+        {
+            try{
+            if( (*it)!=NULL )
+            {
+                if( (*it)->local )
+                    pointObj_local->insertPoint( (*it)->point3D(0),(*it)->point3D(1),(*it)->point3D(2) );
+                else
+                    pointObj->insertPoint( (*it)->point3D(0),(*it)->point3D(1),(*it)->point3D(2) );
+            }
+            }catch(...){}
+        }
+    }
+
+    // Represent line LMs
+    if( hasLines )
+    {
+        lineObj->clear();
+        lineObj_local->clear();
+        for( vector<MapLine*>::const_iterator it = map->map_lines.begin(); it!=map->map_lines.end(); it++)
+        {
+            try{
+            if( (*it)!=NULL )
+            {
+                Vector6d L;
+                L = (*it)->line3D;
+                if( (*it)->local )
+                    lineObj_local->appendLine( L(0),L(1),L(2),L(3),L(4),L(5) );
+                else
+                    lineObj->appendLine( L(0),L(1),L(2),L(3),L(4),L(5) );
+            }
+            }catch(...){}
+        }
+    }
+
+    // Update the text
+    if(hasText){
+        string text = "KeyFrame: \t" + to_string(frame) + " \nFrequency: \t" + to_string_with_precision(1000.f/time,4) + " Hz \nPoints:   \t" + to_string(nPoints) + "\nLines:    \t" + to_string(nLines);
+        //string text = "Frame: \t \t" + to_string(frame) + " \n" + "Frequency: \t" + to_string_with_precision(1000.f/time,4) + " Hz \n" + "Lines:  \t" + to_string(nLines) + " (" + to_string(nLinesH) + ") \nPoints: \t" + to_string(nPoints) + " (" + to_string(nPointsH) + ")";
+        win->addTextMessage(0.85,0.95, text, TColorf(.0,.0,.0), 0, mrpt::opengl::MRPT_GLUT_BITMAP_TIMES_ROMAN_10 );
+    }
+
+    // Update the image
+    if(hasImg)
+        image->setImageView( img_mrpt_image );
+
+    // Re-paint the scene
+    win->unlockAccess3DScene();
+    win->repaint();
+
+    // Key events
+    if(win->keyHit()){
         key = win->getPushedKey(&kmods);
         if(key == MRPTK_SPACE){                     // Space    Reset VO
             theScene->clear();
@@ -350,7 +517,7 @@ bool slamScene::updateScene(){
             }
         }
         else if ( (key == 105) || (key == 73) ){    // I        image
-            hasImg   = !hasImg;          
+            hasImg   = !hasImg;
             if(isKitti){
                 if(hasImg)
                     image->setViewportPosition(20, 20, 621, 188);
@@ -371,19 +538,29 @@ bool slamScene::updateScene(){
 
 }
 
-bool slamScene::updateScene(const MapHandler* map){
+bool slamScene::updateSceneSafe(const MapHandler* map){
 
     theScene = win->get3DSceneAndLock();
     bool restart = false;
+
     theScene->removeObject( kfsObj );
     theScene->removeObject( kfsLinesObj );
+    theScene->removeObject( frustObj );
+    theScene->removeObject( frustObj1 );
+
+    // grab indices (so we don't have memory access problems)
+    int pt_idx = map->map_points.size();
+    int ls_idx = map->map_lines.size();
 
     // Represent KFs
     CPose3D kf_pose;
+    Vector3d Pi;
+    try{
+    Pi = map->map_keyframes[0]->T_kf_w.col(3).head(3);
+    }catch(...){}
+    Vector3d Pj;
     kfsObj      = opengl::CSetOfObjects::Create();
     kfsLinesObj = opengl::CSetOfLines::Create();
-    Vector3d Pi = map->map_keyframes[0]->T_kf_w.col(3).head(3);
-    Vector3d Pj;
     for( vector<KeyFrame*>::const_iterator it = map->map_keyframes.begin(); it != map->map_keyframes.end(); it++ )
     {
         if( (*it)!=NULL )
@@ -396,18 +573,7 @@ bool slamScene::updateScene(const MapHandler* map){
                 {
                     frust_->setPose( kf_pose + frustumL_ );
                     frust_->setLineWidth (slinef);
-                    frust_->setScale(sfrust);
-                    if( (*it)->local )
-                        frust_->setColor_u8( TColor(200,0,0) );
-                    else
-                        frust_->setColor_u8( TColor(0,0,200) );
-                    kfsObj->insert( frust_ );
-                }
-                frust_ = opengl::CFrustum::Create();
-                {
-                    frust_->setPose( kf_pose + frustumR_ );
-                    frust_->setLineWidth (slinef);
-                    frust_->setScale(sfrust);
+                    frust_->setScale(sfrust / 2.0 );
                     if( (*it)->local )
                         frust_->setColor_u8( TColor(200,0,0) );
                     else
@@ -418,6 +584,24 @@ bool slamScene::updateScene(const MapHandler* map){
                 Pj = (*it)->T_kf_w.col(3).head(3);
                 kfsLinesObj->appendLine( Pi(0),Pi(1),Pi(2), Pj(0),Pj(1),Pj(2) );
                 Pi = Pj;
+                // represent VO frustum
+                frustObj  = opengl::CFrustum::Create();
+                {
+                    frustObj->setPose( kf_pose + frustumL_ );
+                    frustObj->setLineWidth (slinef);
+                    frustObj->setScale(sfrust);
+                    frustObj->setColor_u8( TColor(200,0,0) );
+                    theScene->insert(frustObj);
+                }
+                frustObj1 = opengl::CFrustum::Create();
+                {
+                    frustObj1->setPose( kf_pose + frustumR_ );
+                    frustObj1->setLineWidth (slinef);
+                    frustObj1->setScale(sfrust);
+                    frustObj1->setColor_u8( TColor(200,0,0) );
+                    theScene->insert(frustObj1);
+                }
+                pose = kf_pose;
             }
             // if not
             else
@@ -446,27 +630,20 @@ bool slamScene::updateScene(const MapHandler* map){
     theScene->insert( kfsLinesObj );
     theScene->insert( kfsObj );
 
-    // Set camera pointing to the last keyframe
-    win->setCameraPointingToPoint( kf_pose.x(), kf_pose.y(), kf_pose.z() );
-
-    /*// Set camera angle to the last keyframe
-    win->setCameraElevationDeg(-90.0);
-    win->setCameraAzimuthDeg(-75.0);
-    win->setCameraZoom(54.0);*/
-
     // Represent point LMs
     if( hasPoints )
     {
         pointObj->clear();
         pointObj_local->clear();
-        for( vector<MapPoint*>::const_iterator it = map->map_points.begin(); it!=map->map_points.end(); it++)
+        for( int i = 0; i < pt_idx; i++ )
         {
-            if( (*it)!=NULL )
+            MapPoint* it = map->map_points[i];
+            if( it!=NULL )
             {
-                if( (*it)->local )
-                    pointObj_local->insertPoint( (*it)->point3D(0),(*it)->point3D(1),(*it)->point3D(2) );
+                if( it->local && it->inlier )
+                    pointObj_local->insertPoint( it->point3D(0),it->point3D(1),it->point3D(2) );
                 else
-                    pointObj->insertPoint( (*it)->point3D(0),(*it)->point3D(1),(*it)->point3D(2) );
+                    pointObj->insertPoint( it->point3D(0),it->point3D(1),it->point3D(2) );
             }
         }
     }
@@ -476,79 +653,19 @@ bool slamScene::updateScene(const MapHandler* map){
     {
         lineObj->clear();
         lineObj_local->clear();
-        for( vector<MapLine*>::const_iterator it = map->map_lines.begin(); it!=map->map_lines.end(); it++)
+        for( int i = 0; i < ls_idx; i++ )
         {
-            if( (*it)!=NULL )
+            MapLine* it = map->map_lines[i];
+            if( it!=NULL && it->inlier )
             {
                 Vector6d L;
-                L = (*it)->line3D;
-                if( (*it)->local )
+                L = it->line3D;
+                if( it->local )
                     lineObj_local->appendLine( L(0),L(1),L(2),L(3),L(4),L(5) );
                 else
                     lineObj->appendLine( L(0),L(1),L(2),L(3),L(4),L(5) );
             }
         }
-    }
-
-    // Update the camera pose
-    {
-        CPose3D x_aux1(getPoseFormat(x));
-        pose = pose + x_aux1;
-        v_aux_ = v_aux;
-        pose.getAsVector(v_aux);
-        {
-            opengl::CSimpleLinePtr obj = opengl::CSimpleLine::Create();
-            obj->setLineCoords(v_aux_(0),v_aux_(1),v_aux_(2), v_aux(0),v_aux(1),v_aux(2));
-            obj->setLineWidth(sline);
-            obj->setColor(0,0.7,0);
-            theScene->insert( obj );
-        }
-        //bbObj1->setPose(pose1);
-        //srefObj1->setPose(pose1);
-    }
-
-    // Update the GT camera pose
-    if(hasGT){
-        //CPose3D x_auxgt(getPoseFormat(xgt));
-        //pose_gt = pose_gt + x_auxgt;
-        /*pose_gt = x_auxgt;
-        v_auxgt_ = v_auxgt;
-        pose_gt.getAsVector(v_auxgt);
-        float y_ = v_auxgt(1);
-        float z_ = v_auxgt(2);
-        float b_ = v_auxgt(4);
-        float c_ = v_auxgt(5);*/
-        /*v_auxgt(1) =  z_;
-        v_auxgt(2) = -y_;
-        v_auxgt(4) = -c_;
-        v_auxgt(5) =  b_;*/
-        /*pose_gt = TPose3D(v_auxgt(0),v_auxgt(1),v_auxgt(2),v_auxgt(3),v_auxgt(4),v_auxgt(5));
-        {
-            opengl::CSimpleLinePtr obj = opengl::CSimpleLine::Create();
-            obj->setLineCoords(v_auxgt_(0),v_auxgt_(1),v_auxgt_(2), v_auxgt(0),v_auxgt(1),v_auxgt(2));
-            obj->setLineWidth(sline);
-            obj->setColor(0,0,0);
-            theScene->insert( obj );
-        }*/
-        //gtObj->setPose(pose_gt);
-        //srefObjGT->setPose(pose_gt);
-    }
-
-    // Update the comparison camera pose
-    if(hasComparison){
-        /*CPose3D x_aux1(getPoseFormat(xcomp));
-        pose1 = pose1 + x_aux1;
-        v_aux1_ = v_aux1;
-        pose1.getAsVector(v_aux1);
-        {
-            opengl::CSimpleLinePtr obj = opengl::CSimpleLine::Create();
-            obj->setLineCoords(v_aux1_(0),v_aux1_(1),v_aux1_(2), v_aux1(0),v_aux1(1),v_aux1(2));
-            obj->setLineWidth(sline);
-            obj->setColor(0,0,0.7);
-            theScene->insert( obj );
-        }*/
-        //bbObj1->setPose(pose1);
-        //srefObj1->setPose(pose1);
     }
 
     // Update the text
@@ -559,16 +676,14 @@ bool slamScene::updateScene(const MapHandler* map){
     }
 
     // Update the image
-    if(hasImg){
-        //image->setImageView_fast( img_mrpt_image );
+    if(hasImg)
         image->setImageView( img_mrpt_image );
-    }
 
     // Re-paint the scene
     win->unlockAccess3DScene();
     win->repaint();
 
-    // Key events   -       TODO: change the trick to employ viewports
+    // Key events
     if(win->keyHit()){
         key = win->getPushedKey(&kmods);
         if(key == MRPTK_SPACE){                     // Space    Reset VO
@@ -690,17 +805,6 @@ void slamScene::updateSceneGraphs( const MapHandler* map )
                     frust_->setColor_u8( TColor(0,0,200) );
                 kfsObj->insert( frust_ );
             }
-            /*frust_ = opengl::CFrustum::Create();
-            {
-                frust_->setPose( kf_pose + frustumR_ );
-                frust_->setLineWidth (slinef);
-                frust_->setScale(sfrust/2.f);
-                if( (*it)->local )
-                    frust_->setColor_u8( TColor(0,0,200) );
-                else
-                    frust_->setColor_u8( TColor(0,0,200) );
-                kfsObj->insert( frust_ );
-            }*/
         }
     }
     theScene->insert( kfsObj );
@@ -713,7 +817,7 @@ void slamScene::updateSceneGraphs( const MapHandler* map )
         {
             if( map->map_keyframes[i] != NULL && map->map_keyframes[j] != NULL )
             {
-                if( map->full_graph[i][j] >= Config::minLMCovGraph() )
+                if( map->full_graph[i][j] >= SlamConfig::minLMCovGraph() )
                 {
                     Vector3d Pi = map->map_keyframes[i]->T_kf_w.col(3).head(3);
                     Vector3d Pj = map->map_keyframes[j]->T_kf_w.col(3).head(3);
@@ -764,10 +868,8 @@ void slamScene::updateSceneGraphs( const MapHandler* map )
     }
 
     // Update the image
-    if(hasImg){
+    if(hasImg)
         image->setImageView_fast( img_mrpt_image );
-        //image->setImageView( img_mrpt_image );
-    }
 
     // Re-paint the scene
     win->unlockAccess3DScene();
@@ -802,15 +904,29 @@ void slamScene::setComparison(Matrix4d xcomp_){
     xcomp = xcomp_;
 }
 
-void slamScene::setImage(Mat image_){
-    IplImage* iplimage = new IplImage( image_ );
-    //IplImage* iplimage = new IplImage(image_);
-    //img_mrpt_image.loadFromIplImage( &iplimage );
-    //img_mrpt_image.setFromIplImage( &iplimage );
-    img_mrpt_image = CImage( iplimage );
+void slamScene::setImage(const Mat &image_){
+
+    Mat aux;
+    Size img_sz(0.5*image_.cols, 0.5*image_.rows);
+    cv::resize( image_, aux, img_sz );
+
+    bool color;
+    if (aux.channels() == 3) {
+        aux.convertTo(aux, CV_8UC3);
+        color = true;
+    }
+    else if (aux.channels() == 1) {
+        aux.convertTo(aux, CV_8UC1);
+        color = false;
+    }
+    else
+        throw std::runtime_error(std::string("[SlamScene->setImage] unsupported image format: ") +
+                                 std::to_string(aux.channels()));
+
+    img_mrpt_image.loadFromMemoryBuffer(img_sz.width, img_sz.height, color, aux.data, false);
 }
 
-void slamScene::setImage(string image_){
+void slamScene::setImage(const string &image_){
     img_mrpt_image.loadFromFile(image_,1);
 }
 

@@ -1,22 +1,23 @@
 /*****************************************************************************
-**   PL-SLAM: stereo visual SLAM with points and line segment features  	**
+**      Stereo VO and SLAM by combining point and line segment features     **
 ******************************************************************************
-**																			**
-**	Copyright(c) 2017, Ruben Gomez-Ojeda, University of Malaga              **
-**	Copyright(c) 2017, MAPIR group, University of Malaga					**
-**																			**
-**  This program is free software: you can redistribute it and/or modify	**
-**  it under the terms of the GNU General Public License (version 3) as		**
-**	published by the Free Software Foundation.								**
-**																			**
-**  This program is distributed in the hope that it will be useful, but		**
-**	WITHOUT ANY WARRANTY; without even the implied warranty of				**
-**  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the			**
-**  GNU General Public License for more details.							**
-**																			**
-**  You should have received a copy of the GNU General Public License		**
-**  along with this program.  If not, see <http://www.gnu.org/licenses/>.	**
-**																			**
+**                                                                          **
+**  Copyright(c) 2016-2018, Ruben Gomez-Ojeda, University of Malaga         **
+**  Copyright(c) 2016-2018, David Zuñiga-Noël, University of Malaga         **
+**  Copyright(c) 2016-2018, MAPIR group, University of Malaga               **
+**                                                                          **
+**  This program is free software: you can redistribute it and/or modify    **
+**  it under the terms of the GNU General Public License (version 3) as     **
+**  published by the Free Software Foundation.                              **
+**                                                                          **
+**  This program is distributed in the hope that it will be useful, but     **
+**  WITHOUT ANY WARRANTY; without even the implied warranty of              **
+**  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the            **
+**  GNU General Public License for more details.                            **
+**                                                                          **
+**  You should have received a copy of the GNU General Public License       **
+**  along with this program.  If not, see <http://www.gnu.org/licenses/>.   **
+**                                                                          **
 *****************************************************************************/
 
 #include <iomanip>
@@ -48,6 +49,8 @@ class slamScene{
 
 public:
 
+    EIGEN_MAKE_ALIGNED_OPERATOR_NEW
+
     slamScene();
     slamScene(string configFile);
     ~slamScene();
@@ -55,7 +58,9 @@ public:
     void initializeScene(Matrix4d x_0);
     void initViewports(int W, int H);
     bool updateScene();
+    bool updateSceneVO( Matrix4d T_last_kf );
     bool updateScene(const MapHandler* map);
+    bool updateSceneSafe(const MapHandler* map);
     void updateSceneGraphs(const MapHandler* map);
 
     void setText(int frame_, float time_, int nPoints_, int nPointsH_, int nLines_, int nLinesH_);
@@ -63,8 +68,8 @@ public:
     void setPose(Matrix4d x_);
     void setGT(Matrix4d xgt_);
     void setComparison(Matrix4d xcomp_);
-    void setImage(Mat image_);
-    void setImage(string image_);
+    void setImage(const Mat &image_);
+    void setImage(const string &image_);
     void setLegend();
     void setHelp();
     void setPoints(CMatrixFloat pData_);
@@ -91,7 +96,7 @@ public:
     opengl::CFrustumPtr         frustObj, frustObj1;
     opengl::CAxisPtr            axesObj;
 
-    opengl::CSetOfLinesPtr      lineObj, lineObj_local, kfsLinesObj;
+    opengl::CSetOfLinesPtr      lineObj, lineObj_local, kfsLinesObj, voLinesObj;
     opengl::CPointCloudPtr      pointObj, pointObj_local;
     opengl::CSetOfObjectsPtr    kfsObj;
 

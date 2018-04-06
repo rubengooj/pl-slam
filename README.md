@@ -1,10 +1,10 @@
-Notice that this repository is only an open-source version of PL-SLAM released with the aim of being useful for the community, however, it is far from being optimized and we are not including some features such as the parallelized version of PL-SLAM.
+Notice that this repository is only an open-source version of PL-SLAM released with the aim of being useful for the community, however, it is far from being optimized and we are not including some features of PL-SLAM.
 
 # PL-SLAM #
 
 This code contains an algorithm to compute stereo visual SLAM by using both point and line segment features.
 
-**Authors:** [Ruben Gomez-Ojeda](http://mapir.isa.uma.es/mapirwebsite/index.php/people/164-ruben-gomez), [Francisco Angel Moreno](http://mapir.isa.uma.es/mapirwebsite/index.php/people/199-francisco-moreno-due%C3%B1as), [Davide Scaramuzza](http://rpg.ifi.uzh.ch/people_scaramuzza.html), and [Javier Gonzalez-Jimenez](http://mapir.isa.uma.es/mapirwebsite/index.php/people/95-javier-gonzalez-jimenez)
+**Authors:** [Ruben Gomez-Ojeda](http://mapir.isa.uma.es/mapirwebsite/index.php/people/164-ruben-gomez), [David Zuñiga-Noël](http://mapir.isa.uma.es/mapirwebsite/index.php/people/270), [Francisco Angel Moreno](http://mapir.isa.uma.es/mapirwebsite/index.php/people/199-francisco-moreno-due%C3%B1as), [Davide Scaramuzza](http://rpg.ifi.uzh.ch/people_scaramuzza.html), and [Javier Gonzalez-Jimenez](http://mapir.isa.uma.es/mapirwebsite/index.php/people/95-javier-gonzalez-jimenez)
 
 **Related publication:** [*PL-SLAM: a Stereo SLAM System through the Combination of Points and Line Segments*](http://mapir.isa.uma.es/mapirwebsite/index.php/people/164-ruben-gomez)
 
@@ -12,7 +12,7 @@ If you use PL-SLAM in your research work, please cite:
 
     @article{gomez2017pl,
       title   = {{PL-SLAM: a Stereo SLAM System through the Combination of Points and Line Segments}},
-      author  = {Gomez-Ojeda, Ruben and Moreno, Francisco-Angel and Scaramuzza, Davide and Gonzalez-Jimenez, Javier},
+      author  = {Gomez-Ojeda, Ruben and Zuñiga-Noël, David and Moreno, Francisco-Angel and Scaramuzza, Davide and Gonzalez-Jimenez, Javier},
       journal = {arXiv preprint arXiv:1705.09479},
       year    = {2017}
 }
@@ -21,7 +21,7 @@ The pdf file can be found at [https://arxiv.org/abs/1705.09479](https://arxiv.or
 
 [![PL-SLAM](https://img.youtube.com/vi/-lCTf_tAxhQ/0.jpg)](https://www.youtube.com/watch?v=-lCTf_tAxhQ)
 
-**Previous publications:**
+**Related publications:**
 
 [Gomez-Ojeda, R., Briales, J., & Gonzalez-Jimenez, J. (2016, October). PL-SVO: Semi-direct monocular visual odometry by combining points and line segments. In Intelligent Robots and Systems (IROS), 2016 IEEE/RSJ International Conference on (pp. 4211-4216). IEEE.](http://mapir.isa.uma.es/rgomez/publications/iros16plsvo.pdf)
 
@@ -36,10 +36,8 @@ Please do not hesitate to contact the authors if you have any further questions.
 
 ## 1. Prerequisites and dependencies
 
-### OpenCV 3.0.0
+### OpenCV 3.x.x
 It can be easily found at http://opencv.org. 
-In the case of line segments, we have modified the *line_descriptor* from the *opencv_contrib* 
-[repository](https://github.com/Itseez/opencv_contrib), included in the *3rdparty* folder.
 
 ### Eigen3
 http://eigen.tuxfamily.org
@@ -59,32 +57,53 @@ https://github.com/RainerKuemmerle/g2o.git
 ### YAML
 Installation on Ubuntu:
 ```
-sudo apt-get install libyaml-dev
+sudo apt-get install libyaml-cpp-dev
 ```
 
-### MRPT (Optional)
-In case of using the provided representation. 
+### stvo-pl
+It can be found at: 
 ```
-sudo apt-get install libmrpt-dev
+https://github.com/rubengooj/stvo-pl
 ```
 
-Download and install instructions can be also found at: http://www.mrpt.org/ .
+### MRPT
+In case of using the provided representation class. 
+Download and install instructions can be found at: http://www.mrpt.org/
 
-### Line descriptor (in 3rdparty folder)
+#### Known Issues:
+If working with the most recent versions of the MRPT library you might find some issues due to hard refactoring, for which we recommend to use this version instead (the last one we tested):
+```
+https://github.com/MRPT/mrpt/tree/0c3d605c3cbf5f2ffb8137089e43ebdae5a55de3
+```
+
+### Line Descriptor
 We have modified the [*line_descriptor*](https://github.com/opencv/opencv_contrib/tree/master/modules/line_descriptor) module from the [OpenCV/contrib](https://github.com/opencv/opencv_contrib) library (both BSD) which is included in the *3rdparty* folder.
 
 
 ## 2. Configuration and generation
 
-Executing the file *build.sh* will configure and generate the *line_descriptor* and *DBoW2* modules, uncompress the vocabulary files, and then will configure and generate the *PL-SLAM* library for which we generate: **libplslam.so** in the lib folder, and the applications **plstvo_dataset** and **plslam_dataset** that works with our dataset format (explained in the next section).
+Executing the file *build.sh* will configure and generate the *line_descriptor* and *DBoW2* modules, uncompress the vocabulary files, and then will configure and generate the *PL-SLAM* library for which we generate: **libplslam.so** in the lib folder, and the application **plslam_dataset** that works with our dataset format (explained in the next section).
 
 
-## 3. Dataset format and usage
+## 3. Usage
 
-The **plslam_dataset** (and **plstvo_dataset**)  basic usage is: 
-```
-./plslam_dataset  <dataset_path>  
-```
+### Datasets configuration
+We employ an environment variable, *${DATASETS_DIR}*, pointing the directory that contains our datasets. Each sequence from each dataset must contain in its root folder a file named *dataset_params.yaml*, that indicates at least the camera model and the subfolders with the left and right images. We provide dataset parameters files for several datasets and cameras with the format *xxxx_params.yaml*.
 
-where *<dataset_path>* refers to the sequence folder relative to the environment variable *${DATASETS_DIR}* that must be previously set. That sequence folder must contain the dataset configuration file named **dataset_params.yaml** following the examples in **pl-slam/config**, where **images_subfolder_{lr}** refers to the left and right image subfolders.
+### Configuration files
+For running SLAM we can load the default parameters file or employ the *config_xxxx.yaml* files provided for every dataset.
+
+### SLAM Application
+Usage: ./plslam_dataset <dataset_name> [options]
+Options:
+	-c Config file
+	-o Offset (number of frames to skip in the dataset directory
+	-n Number of frames to process the sequence
+	-s Parameter to skip s-1 frames (default 1)
+
+A full command would be:
+
+./plslam_dataset kitti/00 -c ../config/config_kitti.yaml -o 100 -s 2 -n 1000
+
+where we are processing the sequence 00 from the KITTI dataset (in our dataset folders) with the custom config file, with an offset *-c* allowing to skip the first 100 images, a parameter *-s* to consider only one every 2 images, and a parameter *-n* to only consider 1000 input pairs.
 

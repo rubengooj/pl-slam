@@ -1,22 +1,23 @@
 /*****************************************************************************
-**   PL-SLAM: stereo visual SLAM with points and line segment features  	**
+**      Stereo VO and SLAM by combining point and line segment features     **
 ******************************************************************************
-**																			**
-**	Copyright(c) 2017, Ruben Gomez-Ojeda, University of Malaga              **
-**	Copyright(c) 2017, MAPIR group, University of Malaga					**
-**																			**
-**  This program is free software: you can redistribute it and/or modify	**
-**  it under the terms of the GNU General Public License (version 3) as		**
-**	published by the Free Software Foundation.								**
-**																			**
-**  This program is distributed in the hope that it will be useful, but		**
-**	WITHOUT ANY WARRANTY; without even the implied warranty of				**
-**  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the			**
-**  GNU General Public License for more details.							**
-**																			**
-**  You should have received a copy of the GNU General Public License		**
-**  along with this program.  If not, see <http://www.gnu.org/licenses/>.	**
-**																			**
+**                                                                          **
+**  Copyright(c) 2016-2018, Ruben Gomez-Ojeda, University of Malaga         **
+**  Copyright(c) 2016-2018, David Zuñiga-Noël, University of Malaga         **
+**  Copyright(c) 2016-2018, MAPIR group, University of Malaga               **
+**                                                                          **
+**  This program is free software: you can redistribute it and/or modify    **
+**  it under the terms of the GNU General Public License (version 3) as     **
+**  published by the Free Software Foundation.                              **
+**                                                                          **
+**  This program is distributed in the hope that it will be useful, but     **
+**  WITHOUT ANY WARRANTY; without even the implied warranty of              **
+**  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the            **
+**  GNU General Public License for more details.                            **
+**                                                                          **
+**  You should have received a copy of the GNU General Public License       **
+**  along with this program.  If not, see <http://www.gnu.org/licenses/>.   **
+**                                                                          **
 *****************************************************************************/
 
 #pragma once
@@ -30,7 +31,6 @@ using namespace cv;
 using namespace std;
 using namespace Eigen;
 
-
 typedef Matrix<int,5,1>    Vector5i;
 typedef Matrix<double,6,1> Vector6d;
 typedef Matrix<double,6,6> Matrix6d;
@@ -42,9 +42,11 @@ class MapPoint
 
 public:
 
-    MapPoint(){};
+    EIGEN_MAKE_ALIGNED_OPERATOR_NEW
+
+    MapPoint() { }
     MapPoint(int idx_, Vector3d point3D_, Mat desc_, int kf_obs_, Vector2d obs_, Vector3d dir_, double sigma2_ = 1.f);
-    ~MapPoint(){};
+    ~MapPoint() { }
 
     void addMapPointObservation(Mat desc_, int kf_obs_, Vector2d obs_, Vector3d dir_,  double sigma2_ = 1.f);
     void updateAverageDescDir();
@@ -70,9 +72,11 @@ class MapLine
 
 public:
 
-    MapLine(){};
+    EIGEN_MAKE_ALIGNED_OPERATOR_NEW
+
+    MapLine() { }
     MapLine(int idx_, Vector6d line3D_, Mat desc_, int kf_obs_, Vector3d obs_, Vector3d dir_, Vector4d pts_,  double sigma2_ = 1.f);
-    ~MapLine(){};
+    ~MapLine() { }
 
     void addMapLineObservation(Mat desc_, int kf_obs_, Vector3d obs_, Vector3d dir_, Vector4d pts_,  double sigma2_ = 1.f);
     void updateAverageDescDir();

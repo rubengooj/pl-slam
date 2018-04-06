@@ -929,6 +929,7 @@ static Ptr<LSDDetectorC> createLSDDetectorC();
  */
 void detect( const Mat& image, CV_OUT std::vector<KeyLine>& keylines, int scale, int numOctaves, const Mat& mask = Mat() );
 void detect( const Mat& image, CV_OUT std::vector<KeyLine>& keylines, int scale, int numOctaves, LSDOptions opts, const Mat& mask = Mat() );
+void detectFast( const Mat& image, CV_OUT std::vector<KeyLine>& keylines, int scale, int numOctaves, LSDOptions opts, const Mat& mask = Mat() );
 
 
 /** @overload
@@ -949,6 +950,7 @@ void computeGaussianPyramid( const Mat& image, int numOctaves, int scale );
 /* implementation of line detection */
 void detectImpl( const Mat& imageSrc, std::vector<KeyLine>& keylines, int numOctaves, int scale, const Mat& mask ) const;
 void detectImpl( const Mat& imageSrc, std::vector<KeyLine>& keylines, int numOctaves, int scale, LSDOptions opts, const Mat& mask ) const;
+void detectImplFast( const Mat& imageSrc, std::vector<KeyLine>& keylines, int numOctaves, int scale, LSDOptions opts, const Mat& mask ) const;
 
 /* matrices for Gaussian pyramids */
 std::vector<cv::Mat> gaussianPyrs;

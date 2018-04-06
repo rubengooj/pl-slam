@@ -1,0 +1,133 @@
+# -----------------------------------------------------------------------------------------------------
+# StVO parameters
+# -----------------------------------------------------------------------------------------------------
+# kf decision (SLAM) parameters
+min_entropy_ratio     : 0.85
+max_kf_t_dist         : 5.0
+max_kf_r_dist         : 15.0
+
+# StVO-PL options
+# -----------------------------------------------------------------------------------------------------
+has_points         : true      # true if using points
+has_lines          : true      # true if using line segments
+use_fld_lines      : false      # true if using FLD detector
+lr_in_parallel     : true      # true if detecting and matching features in parallel
+pl_in_parallel     : true      # true if detecting points and line segments in parallel
+best_lr_matches    : true      # true if double-checking the matches between the two images
+adaptative_fast    : true      # true if using adaptative fast_threshold
+use_motion_model   : false     # true if using constant motion model
+
+# Tracking parameters
+# -----------------------------------------------------------------------------------------------------
+# Point features
+max_dist_epip     : 1.0        # max. epipolar distance in pixels
+min_disp          : 1.0        # min. disparity (avoid points in the infinite)
+min_ratio_12_p    : 0.75       # min. ratio between the first and second best matches
+
+# Line segment features
+line_sim_th       : 0.75       # threshold for cosine similarity
+stereo_overlap_th : 0.85
+f2f_overlap_th    : 0.85
+min_line_length   : 0.05       # min. line length (relative to img size)
+line_horiz_th     : 1.0        # parameter to avoid horizontal lines (pixels)
+min_ratio_12_l    : 0.75       # parameter to avoid outliers in line matching
+ls_min_disp_ratio : 0.7        # min ratio between min(disp)/max(disp) for a LS
+
+# Adaptative FAST parameters
+fast_min_th       : 5          # min. value for FAST threshold
+fast_max_th       : 50         # max. value for FAST threshold
+fast_inc_th       : 5          # base increment for the FAST threshold
+fast_feat_th      : 50         # base number of features to increase/decrease FAST threshold
+fast_err_th       : 0.5        # threshold for the optimization error
+
+# Optimization parameters
+# -----------------------------------------------------------------------------------------------------
+homog_th         : 1e-7        # avoid points in the infinite
+min_features     : 10          # min. number of features to perform StVO
+max_iters        : 5           # max. number of iterations in the first stage of the optimization
+max_iters_ref    : 10          # max. number of iterations in the refinement stage
+min_error        : 1e-7        # min. error to stop the optimization
+min_error_change : 1e-7        # min. error change to stop the optimization
+inlier_k         : 4.0         # factor to discard outliers before the refinement stage
+
+# Feature detection parameters
+# -----------------------------------------------------------------------------------------------------
+matching_strategy : 3
+matching_s_ws     : 10
+matching_f2f_ws   : 3
+
+# ORB detector
+orb_nfeatures    : 600
+orb_scale_factor : 1.2
+orb_nlevels      : 1
+orb_edge_th      : 19
+orb_wta_k        : 2            # was set to 4
+orb_score        : 1            # 0 - HARRIS  |  1 - FAST
+orb_patch_size   : 31
+orb_fast_th      : 20           # default FAST threshold
+# LSD parameters
+lsd_nfeatures    : 100          # set to 0 if keeping all lines
+lsd_refine       : 0
+lsd_scale        : 1.2
+lsd_sigma_scale  : 0.6
+lsd_quant        : 2.0
+lsd_ang_th       : 22.5
+lsd_log_eps      : 1.0
+lsd_density_th   : 0.6
+lsd_n_bins       : 1024
+
+
+
+
+# -----------------------------------------------------------------------------------------------------
+# PLSLAM parameters
+# -----------------------------------------------------------------------------------------------------
+
+fast_matching         : true
+has_refinement        : false
+mutithread_slam       : true
+
+# lm numbers and errors
+min_lm_obs            : 5
+max_common_fts_kf     : 0.9
+
+max_kf_epip_p         : 1.0
+max_kf_epip_l         : 1.0
+
+max_lm_3d_err         : 0.1
+max_lm_dir_err        : 0.1
+max_point_point_error : 0.1
+max_point_line_error  : 0.1
+max_dir_line_error    : 0.1
+
+# graphs parameters
+min_lm_ess_graph      : 150
+min_lm_cov_graph      : 75
+min_kf_local_map      : 3
+
+# LBA
+lambda_lba_lm         : 0.00001     # (if auto, this is the initial tau)
+lambda_lba_k          : 10.0
+max_iters_lba         : 15
+
+# Loop closure
+vocabulary_p          : "/home/ruben/code/pl-slam-dev/vocabulary/mapir_orb.yml"
+vocabulary_l          : "/home/ruben/code/pl-slam-dev/vocabulary/mapir_lsd.yml"
+
+lc_mat                : 0.5
+lc_res                : 1.5
+lc_unc                : 0.01
+lc_inl                : 0.3
+lc_trs                : 1.5
+lc_rot                : 35.0
+
+max_iters_pgo         : 100
+lc_kf_dist            : 50
+lc_kf_max_dist        : 50
+lc_nkf_closest        : 4
+lc_inlier_ratio       : 30.0
+
+min_pt_matches        : 10
+min_ls_matches        : 6
+
+
