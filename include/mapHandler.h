@@ -83,7 +83,7 @@ public:
     void finishSLAM();
     void addKeyFrame(KeyFrame *curr_kf);
 
-    void addKeyFrame_multiThread(KeyFrame *curr_kf);
+    void addKeyFrame_multiThread(KeyFrame *curr_kf, KeyFrame *prev_kf);
     void handlerThread();
 
     void startThreads();
@@ -102,6 +102,7 @@ public:
 
     void expandGraphs();
     void formLocalMap();
+    void formLocalMap( KeyFrame * kf );
     void formLocalMap_old();
     void removeBadMapLandmarks();
     void removeRedundantKFs();
@@ -162,46 +163,44 @@ public:
     };
     VOStatus vo_status;
 
-    // lba variables
+    // status of the LBA thread
     vector<int> lba_kfs;
-    enum LBAStatus{
+    enum LBAState{
         LBA_IDLE,
         LBA_ACTIVE,
         LBA_READY,
-        LBA_WAITING,
         LBA_TERMINATED
     };
-    LBAStatus lba_status;
+    LBAState lba_thread_status;
 
     // Local Mapping
     std::mutex lba_mutex;
     std::condition_variable lba_start, lba_join;
 
-    // lc variables
-    enum LCStatus{
-        LC_IDLE,
-        LC_ACTIVE,
-        LC_READY,
-        LC_TERMINATED
-    };
-    LCStatus lc_status;
     vector< Vector3i > lc_idxs,  lc_idx_list;
     vector< Vector6d > lc_poses, lc_pose_list;
     vector< vector<Vector4i> > lc_pt_idxs;
     vector< vector<Vector4i> > lc_ls_idxs;
 
-    // Loop Closure
-    KeyFrame* lc_kf;
-    int lc_common_pt, lc_common_ls;
-    std::vector<int> lc_matches_pt, lc_matches_ls;
-
     std::mutex lc_mutex;
     std::condition_variable lc_start, lc_join;
 
+    enum LCState{
+        LC_IDLE,
+        LC_ACTIVE,
+        LC_READY,
+        LC_TERMINATED
+    };
+    LCState lc_state, lc_thread_status;
+
+
+
     // KF queue
-    std::list<KeyFrame*> kf_queue;
+    std::list<pair<KeyFrame*,KeyFrame*>> kf_queue;  // list of curr_kf_mt and prev_kf_mt
     std::mutex kf_queue_mutex;
     std::condition_variable new_kf;
+    KeyFrame* curr_kf_mt;
+    KeyFrame* prev_kf_mt;
 
     std::mutex cout_mutex;
     void print_msg(const std::string &msg);

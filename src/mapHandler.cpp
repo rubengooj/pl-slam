@@ -39,6 +39,9 @@ MapHandler::MapHandler(PinholeStereoCamera* cam_)
         dbow_voc_p.load( SlamConfig::dbowVocP() );
     if( SlamConfig::hasLines() )
         dbow_voc_l.load( SlamConfig::dbowVocL() );
+
+    lc_state = LC_IDLE;
+
 }
 
 void MapHandler::initialize( KeyFrame *kf0 )
@@ -116,8 +119,11 @@ void MapHandler::addKeyFrame( KeyFrame *curr_kf )
 {
     Timer timer;
 
-    if (SlamConfig::multithreadSLAM()) {
+    this->prev_kf = this->curr_kf;
+    this->curr_kf = curr_kf;
 
+    if( SlamConfig::multithreadSLAM() )
+    {
         // expand graphs
         expandGraphs();
         // select previous keyframe
@@ -144,14 +150,11 @@ void MapHandler::addKeyFrame( KeyFrame *curr_kf )
         map_keyframes.push_back( curr_kf );
         map_points_kf_idx.insert( std::make_pair(curr_kf->kf_idx, aux_vec) );
         map_lines_kf_idx.insert(  std::make_pair(curr_kf->kf_idx, aux_vec) );
-
-
-        addKeyFrame_multiThread(curr_kf);
+        // call
+        addKeyFrame_multiThread(curr_kf,prev_kf);
         return;
     }
 
-    this->prev_kf = this->curr_kf;
-    this->curr_kf = curr_kf;
 
     // reset time variable
     time = Vector7f::Zero();
@@ -833,6 +836,8 @@ void MapHandler::expandGraphs()
 void MapHandler::formLocalMap()
 {
 
+    // for the Single Thread version
+
     // reset local KFs & LMs
     for( vector<KeyFrame*>::iterator kf_it = map_keyframes.begin(); kf_it != map_keyframes.end(); kf_it++ )
     {
@@ -896,17 +901,83 @@ void MapHandler::formLocalMap()
 
 }
 
+void MapHandler::formLocalMap( KeyFrame * kf )
+{
+
+    // reset local KFs & LMs
+    for( vector<KeyFrame*>::iterator kf_it = map_keyframes.begin(); kf_it != map_keyframes.end(); kf_it++ )
+    {
+        if( (*kf_it) != NULL )
+            (*kf_it)->local = false;
+    }
+    for( vector<MapPoint*>::iterator pt_it = map_points.begin(); pt_it != map_points.end(); pt_it++ )
+    {
+        if( (*pt_it) != NULL )
+            (*pt_it)->local = false;
+    }
+    for( vector<MapLine*>::iterator  ls_it = map_lines.begin(); ls_it != map_lines.end(); ls_it++ )
+    {
+        if( (*ls_it) != NULL )
+            (*ls_it)->local = false;
+    }
+
+    // set first KF and their associated LMs as local
+    kf->local = true;
+    for( vector<PointFeature*>::iterator pt_it = kf->stereo_frame->stereo_pt.begin(); pt_it != kf->stereo_frame->stereo_pt.end(); pt_it++ )
+    {
+        if( (*pt_it) != NULL )
+        {
+            int lm_idx = (*pt_it)->idx;
+            if( lm_idx != -1 && map_points[lm_idx] != NULL )
+                map_points[lm_idx]->local = true;
+        }
+    }
+    for( vector<LineFeature*>::iterator ls_it = kf->stereo_frame->stereo_ls.begin(); ls_it != kf->stereo_frame->stereo_ls.end(); ls_it++ )
+    {
+        if( (*ls_it) != NULL )
+        {
+            int lm_idx = (*ls_it)->idx;
+            if( lm_idx != -1 && map_lines[lm_idx] != NULL )
+                map_lines[lm_idx]->local = true;
+        }
+    }
+
+    // loop over covisibility graph / full graph if we want to find more points
+    int g_size = full_graph.size()-1;
+    for( int i = 0; i < g_size; i++ )
+    {
+        if( full_graph[g_size][i] >= SlamConfig::minLMCovGraph() || abs(g_size-i) <= SlamConfig::minKFLocalMap() )
+        {
+            map_keyframes[i]->local = true;
+            // loop over the landmarks seen by KF{i}
+            for( vector<PointFeature*>::iterator pt_it = map_keyframes[i]->stereo_frame->stereo_pt.begin(); pt_it != map_keyframes[i]->stereo_frame->stereo_pt.end(); pt_it++ )
+            {
+                int lm_idx = (*pt_it)->idx;
+                if( lm_idx != -1 && map_points[lm_idx] != NULL )
+                    map_points[lm_idx]->local = true;
+            }
+            for( vector<LineFeature*>::iterator ls_it = map_keyframes[i]->stereo_frame->stereo_ls.begin(); ls_it != map_keyframes[i]->stereo_frame->stereo_ls.end(); ls_it++ )
+            {
+                int lm_idx = (*ls_it)->idx;
+                if( lm_idx != -1 && map_lines[lm_idx] != NULL )
+                    map_lines[lm_idx]->local = true;
+            }
+        }
+    }
+
+}
+
 // -----------------------------------------------------------------------------------------------------------------------------
 // Parallelization functions
 // -----------------------------------------------------------------------------------------------------------------------------
 
-void MapHandler::addKeyFrame_multiThread( KeyFrame *curr_kf ) {
+void MapHandler::addKeyFrame_multiThread(KeyFrame *curr_kf , KeyFrame *prev_kf) {
 
     if (!threads_started) return;
 
     {
         std::lock_guard<std::mutex> lk(kf_queue_mutex);
-        kf_queue.push_back(curr_kf);
+        kf_queue.push_back(std::make_pair(curr_kf,prev_kf));
     }
     new_kf.notify_one();
 }
@@ -921,8 +992,8 @@ void MapHandler::handlerThread() {
         if (kf_queue.empty())
             new_kf.wait(lk, [this]{return !kf_queue.empty();});
 
-        prev_kf = curr_kf;
-        curr_kf = kf_queue.front();
+        curr_kf_mt = kf_queue.front().first;
+        prev_kf_mt = kf_queue.front().second;
         kf_queue.pop_front();
 
         lk.unlock();
@@ -930,105 +1001,37 @@ void MapHandler::handlerThread() {
         // notify threads
         {
             std::lock_guard<std::mutex> lk(lba_mutex);
-            lba_status = LBA_ACTIVE;
+            lba_thread_status = LBA_ACTIVE;
         }
         lba_start.notify_one();
 
         {
             std::lock_guard<std::mutex> lk(lc_mutex);
-            lc_status = LC_ACTIVE;
+            lc_thread_status = LC_ACTIVE;
         }
         lc_start.notify_one();
 
+        if( curr_kf_mt == nullptr || prev_kf_mt == nullptr ) return;
+
         // join localMapping and loopClosure threads
         std::unique_lock<std::mutex> lba_lk(lba_mutex);
-        if (lba_status != LBA_IDLE)
-            lba_join.wait(lba_lk, [this]{return (lba_status == LBA_IDLE);});
+        if( lba_thread_status != LBA_IDLE )
+            lba_join.wait(lba_lk, [this]{return (lba_thread_status == LBA_IDLE);});
 
         std::unique_lock<std::mutex> lc_lk(lc_mutex);
-        if (lc_status != LC_READY && lc_status != LC_IDLE)
-            lc_join.wait(lc_lk, [this]{return (lc_status == LC_READY || lc_status == LC_IDLE);});
+        if ( lc_thread_status != LC_IDLE )
+            lc_join.wait(lc_lk, [this]{return (lc_thread_status == LC_IDLE);});
 
         // loop closure
-        if (lc_status == LC_READY) {
-            vector<Vector4i> lc_pt_idx, lc_ls_idx;
-            vector<PointFeature*> lc_points;
-            vector<LineFeature*>  lc_lines;
-            Vector6d pose_inc;
-
-            // save data for optimization
-            for (int i1 = 0; i1 < lc_matches_pt.size(); ++i1) {
-                const int &i2 = lc_matches_pt[i1];
-                if (i2 < 0) continue;
-
-                Vector3d P       = lc_kf->stereo_frame->stereo_pt[i1]->P;
-                Vector2d pl_obs  = curr_kf->stereo_frame->stereo_pt[i2]->pl;
-                PointFeature* pt = new PointFeature( P, pl_obs );
-                lc_points.push_back(pt);
-                // save indices for fusing LMs
-                Vector4i idx;
-                idx(0) = lc_kf->stereo_frame->stereo_pt[i1]->idx;
-                idx(1) = i1;
-                idx(2) = curr_kf->stereo_frame->stereo_pt[i2]->idx;
-                idx(3) = i2;
-                lc_pt_idx.push_back(idx);
-            }
-
-            for (int i1 = 0; i1 < lc_matches_ls.size(); ++i1) {
-                const int &i2 = lc_matches_ls[i1];
-                if (i2 < 0) continue;
-
-                Vector3d sP     = lc_kf->stereo_frame->stereo_ls[i1]->sP;
-                Vector3d eP     = lc_kf->stereo_frame->stereo_ls[i1]->eP;
-                Vector3d le_obs = curr_kf->stereo_frame->stereo_ls[i2]->le;
-                LineFeature* ls = new LineFeature( sP, eP, le_obs, curr_kf->stereo_frame->stereo_ls[i2]->spl, curr_kf->stereo_frame->stereo_ls[i2]->epl );
-                lc_lines.push_back(ls);
-                // save indices for fusing LMs
-                Vector4i idx;
-                idx(0) = lc_kf->stereo_frame->stereo_ls[i1]->idx;
-                idx(1) = i1;
-                idx(2) = curr_kf->stereo_frame->stereo_ls[i2]->idx;
-                idx(3) = i2;
-                lc_ls_idx.push_back(idx);
-            }
-
-            // compute relative transformation
-            bool isLC = computeRelativePoseRobustGN(lc_points,lc_lines,lc_pt_idx,lc_ls_idx,pose_inc);
-            if (isLC) {
-                // add information and update status for loop closure
-                lc_pt_idxs.push_back( lc_pt_idx );
-                lc_ls_idxs.push_back( lc_ls_idx );
-                lc_poses.push_back( pose_inc );
-                lc_pose_list.push_back( pose_inc );
-                Vector3i lc_idx;
-                lc_idx(0) = lc_kf->kf_idx;
-                lc_idx(1) = curr_kf->kf_idx;
-                lc_idx(2) = 1;
-                lc_idxs.push_back( lc_idx );
-                lc_idx_list.push_back(lc_idx);
-
-                loopClosureOptimizationCovGraphG2O();
-            }
-
-            for (PointFeature* pt : lc_points)
-                delete pt;
-            for (LineFeature* ls : lc_lines)
-                delete ls;
+        if( lc_state == LC_READY )
+        {
+            loopClosureOptimizationCovGraphG2O();
+            lc_state = LC_IDLE;
         }
+
     }
 
-    // notify threads for termination
-    {
-        std::lock_guard<std::mutex> lk(lba_mutex);
-        lba_status = LBA_ACTIVE;
-    }
-    lba_start.notify_one();
 
-    {
-        std::lock_guard<std::mutex> lk(lc_mutex);
-        lc_status = LC_ACTIVE;
-    }
-    lc_start.notify_one();
 }
 
 void MapHandler::startThreads() {
@@ -1041,14 +1044,14 @@ void MapHandler::startThreads() {
 
     {
         std::lock_guard<std::mutex> lk(lba_mutex);
-        lba_status = LBA_IDLE;
+        lba_thread_status = LBA_IDLE;
     }
     std::thread localMapping(&MapHandler::localMappingThread, this);
     localMapping.detach();
 
     {
         std::lock_guard<std::mutex> lk(lc_mutex);
-        lc_status = LC_IDLE;
+        lc_thread_status = LC_IDLE;
     }
     std::thread loopClosure(&MapHandler::loopClosureThread, this);
     loopClosure.detach();
@@ -1061,19 +1064,19 @@ void MapHandler::killThreads() {
 
     {
         std::lock_guard<std::mutex> lk(kf_queue_mutex);
-        kf_queue.push_back(nullptr);
+        kf_queue.push_back(std::make_pair(nullptr,nullptr));
     }
     new_kf.notify_one();
 
     print_msg("[Waiting for threads to finish...");
 
     std::unique_lock<std::mutex> lba_lk(lba_mutex);
-    if (lba_status != LBA_TERMINATED)
-        lba_join.wait(lba_lk, [this]{return (lba_status == LBA_TERMINATED);});
+    if (lba_thread_status != LBA_TERMINATED)
+        lba_join.wait(lba_lk, [this]{return (lba_thread_status == LBA_TERMINATED);});
 
     std::unique_lock<std::mutex> lc_lk(lc_mutex);
-    if (lc_status != LC_TERMINATED)
-        lc_join.wait(lc_lk, [this]{return (lc_status == LC_TERMINATED);});
+    if (lc_thread_status != LC_TERMINATED)
+        lc_join.wait(lc_lk, [this]{return (lc_thread_status == LC_TERMINATED);});
 }
 
 void MapHandler::localMappingThread() {
@@ -1084,23 +1087,23 @@ void MapHandler::localMappingThread() {
     while (true) {
 
         lk.lock();
-        if (lba_status != LBA_ACTIVE)
-            lba_start.wait(lk, [this]{return (lba_status == LBA_ACTIVE);});
+        if (lba_thread_status != LBA_ACTIVE)
+            lba_start.wait(lk, [this]{return (lba_thread_status == LBA_ACTIVE);});
         lk.unlock();
 
-        if (curr_kf == nullptr) break;
+        if (curr_kf_mt == nullptr || prev_kf_mt == nullptr) break;
 
         // reset indices
-        for (PointFeature* pt : curr_kf->stereo_frame->stereo_pt)
+        for (PointFeature* pt : curr_kf_mt->stereo_frame->stereo_pt)
             pt->idx = -1;
-        for (LineFeature* ls : curr_kf->stereo_frame->stereo_ls)
+        for (LineFeature* ls : curr_kf_mt->stereo_frame->stereo_ls)
             ls->idx = -1;
 
         // look for common matches and update the full graph
-        lookForCommonMatches( prev_kf, curr_kf );
+        lookForCommonMatches( prev_kf_mt, curr_kf_mt );
 
         // form local map
-        formLocalMap();
+        formLocalMap(curr_kf_mt);
 
         // perform local bundle adjustment
         int lba = localBundleAdjustment();
@@ -1109,14 +1112,14 @@ void MapHandler::localMappingThread() {
         removeBadMapLandmarks();
 
         lk.lock();
-        lba_status = LBA_IDLE;
+        lba_thread_status = LBA_IDLE;
         lk.unlock();
 
         lba_join.notify_one();
     }
 
     lk.lock();
-    lba_status = LBA_TERMINATED;
+    lba_thread_status = LBA_TERMINATED;
     lk.unlock();
 
     lba_join.notify_one();
@@ -1132,62 +1135,77 @@ void MapHandler::loopClosureThread() {
     while (true) {
 
         lk.lock();
-        if (lc_status != LC_ACTIVE)
-            lc_start.wait(lk, [this]{return (lc_status == LC_ACTIVE);});
+        if (lc_thread_status != LC_ACTIVE)
+            lc_start.wait(lk, [this]{return (lc_thread_status == LC_ACTIVE);});
         lk.unlock();
 
-        if (curr_kf == nullptr) break; // stop loop closure thread
+        if ( curr_kf_mt == nullptr && prev_kf_mt == nullptr ) break; // stop loop closure thread
 
         // insert BOW vector
         if( SlamConfig::hasPoints() && SlamConfig::hasLines() )
-            insertKFBowVectorPL(curr_kf);
+            insertKFBowVectorPL(curr_kf_mt);
         else if( SlamConfig::hasPoints() && !SlamConfig::hasLines() )
-            insertKFBowVectorP(curr_kf);
+            insertKFBowVectorP(curr_kf_mt);
         else if( !SlamConfig::hasPoints() && SlamConfig::hasLines() )
-            insertKFBowVectorL(curr_kf);
+            insertKFBowVectorL(curr_kf_mt);
 
         // look for loop closure candidates
         int lc_kf_idx = -1;
-        lookForLoopCandidates(curr_kf->kf_idx, lc_kf_idx);
+        lookForLoopCandidates(curr_kf_mt->kf_idx, lc_kf_idx);
+        //bool inl_ratio_condition = false;
+        if( lc_kf_idx >= 0 )
+        {
 
-        bool inl_ratio_condition = false;
-        if (lc_kf_idx >= 0) {
-            lc_kf = map_keyframes[lc_kf_idx];
+            vector<Vector4i> lc_pt_idx, lc_ls_idx;
+            vector<PointFeature*> lc_points;
+            vector<LineFeature*>  lc_lines;
+            Vector6d pose_inc;
 
-            // points kf2kf matching
-            lc_common_pt = match(lc_kf->stereo_frame->pdesc_l, curr_kf->stereo_frame->pdesc_l, SlamConfig::minRatio12P(), lc_matches_pt);
+            bool isLC = isLoopClosure( map_keyframes[lc_kf_idx], curr_kf_mt, pose_inc, lc_pt_idx, lc_ls_idx, lc_points, lc_lines );
 
-            // lines kf2kf matching
-            lc_common_ls = match(lc_kf->stereo_frame->ldesc_l, curr_kf->stereo_frame->ldesc_l, SlamConfig::minRatio12L(), lc_matches_ls);
-
-            int n_pt_1 = lc_kf->stereo_frame->pdesc_l.rows, n_pt_2 = curr_kf->stereo_frame->pdesc_l.rows;
-            int n_ls_1 = lc_kf->stereo_frame->ldesc_l.rows, n_ls_2 = curr_kf->stereo_frame->ldesc_l.rows;
-
-            double inl_ratio_pt = std::max( 100.0 * lc_common_pt / n_pt_1, 100.0 * lc_common_pt / n_pt_2 );
-            double inl_ratio_ls = std::max( 100.0 * lc_common_ls / n_ls_1, 100.0 * lc_common_ls / n_ls_2 );
-
-            bool condition_pt = true, condition_ls = true;
-            if (SlamConfig::hasPoints())
-                condition_pt = (inl_ratio_pt > SlamConfig::lcInlierRatio());
-            if (SlamConfig::hasLines())
-                condition_ls = (inl_ratio_ls > SlamConfig::lcInlierRatio());
-            if (!SlamConfig::hasPoints() && !SlamConfig::hasLines()) {
-                condition_pt = false;
-                condition_ls = false;
+            // if it is loop closure, add information and update status
+            if( isLC )
+            {
+                lc_pt_idxs.push_back( lc_pt_idx );
+                lc_ls_idxs.push_back( lc_ls_idx );
+                lc_poses.push_back( pose_inc );
+                lc_pose_list.push_back( pose_inc );
+                Vector3i lc_idx;
+                lc_idx(0) = map_keyframes[lc_kf_idx]->kf_idx;
+                lc_idx(1) = curr_kf_mt->kf_idx;
+                lc_idx(2) = 1;
+                lc_idxs.push_back( lc_idx );
+                lc_idx_list.push_back(lc_idx);
+                if( lc_state == LC_IDLE )
+                    lc_state = LC_ACTIVE;
+            }
+            else
+            {
+                if( lc_state == LC_ACTIVE )
+                    lc_state = LC_READY;
             }
 
-            inl_ratio_condition = (condition_pt && condition_ls);
+            for (PointFeature* pt : lc_points)
+                delete pt;
+            for (LineFeature* ls : lc_lines)
+                delete ls;
+        }
+        else
+        {
+            if( lc_state == LC_ACTIVE )
+                lc_state = LC_READY;
         }
 
         lk.lock();
-        lc_status = inl_ratio_condition ? LC_READY : LC_IDLE;
+        lc_thread_status = LC_IDLE;
         lk.unlock();
 
         lc_join.notify_one();
+
     }
 
     lk.lock();
-    lc_status = LC_TERMINATED;
+    lc_thread_status = LC_TERMINATED;
     lk.unlock();
 
     lc_join.notify_one();
@@ -1838,7 +1856,7 @@ int MapHandler::levMarquardtOptimizationLBA( vector<double> X_aux, vector<int> k
 
     // Remove bad observations
     //---------------------------------------------------------------------------------------------
-    for( vector<Vector6i>::iterator pt_it = pt_obs_list.end(); pt_it != pt_obs_list.begin(); pt_it-- )
+    for( vector<Vector6i>::reverse_iterator pt_it = pt_obs_list.rbegin(); pt_it != pt_obs_list.rend(); ++pt_it )
     {
         if( (*pt_it)(5) == -1 )
         {
@@ -1898,7 +1916,7 @@ int MapHandler::levMarquardtOptimizationLBA( vector<double> X_aux, vector<int> k
         }
     }
 
-    for( vector<Vector6i>::iterator ls_it = ls_obs_list.end(); ls_it != ls_obs_list.begin(); ls_it-- )
+    for( vector<Vector6i>::reverse_iterator ls_it = ls_obs_list.rbegin(); ls_it != ls_obs_list.rend(); ++ls_it )
     {
         if( (*ls_it)(5) == -1 )
         {
@@ -2923,6 +2941,7 @@ void MapHandler::removeRedundantKFs()
 
 void MapHandler::loopClosure()
 {
+
     Timer timer;
 
     // look for loop closure candidates
@@ -2955,13 +2974,13 @@ void MapHandler::loopClosure()
             lc_idx(2) = 1;
             lc_idxs.push_back( lc_idx );
             lc_idx_list.push_back(lc_idx);
-            if( lc_status == LC_IDLE )
-                lc_status = LC_ACTIVE;
+            if( lc_state == LC_IDLE )
+                lc_state = LC_ACTIVE;
         }
         else
         {
-            if( lc_status == LC_ACTIVE )
-                lc_status = LC_READY;
+            if( lc_state == LC_ACTIVE )
+                lc_state = LC_READY;
         }
 
         for (PointFeature* pt : lc_points)
@@ -2971,17 +2990,17 @@ void MapHandler::loopClosure()
     }
     else
     {
-        if( lc_status == LC_ACTIVE )
-            lc_status = LC_READY;
+        if( lc_state == LC_ACTIVE )
+            lc_state = LC_READY;
     }
 
     // LC computation
-    if( lc_status == LC_READY )  // add condition indicating that the LC has finished
+    if( lc_state == LC_READY )  // add condition indicating that the LC has finished
     {
         timer.start();
         loopClosureOptimizationCovGraphG2O();
         time(6) = timer.stop(); //ms
-        lc_status = LC_IDLE;
+        lc_state = LC_IDLE;
     }
 }
 
@@ -3255,24 +3274,24 @@ bool MapHandler::isLoopClosure( const KeyFrame* kf0, const KeyFrame* kf1, Vector
     double inl_ratio_ls = max( 100.0 * common_ls / n_ls_0, 100.0 * common_ls / n_ls_1 );
     bool inl_ratio_condition = false;
 
-    inl_ratio_condition = false;
     if( SlamConfig::hasPoints() && SlamConfig::hasLines() )
     {
         if( inl_ratio_pt > SlamConfig::lcInlierRatio() && inl_ratio_ls > SlamConfig::lcInlierRatio() )
             inl_ratio_condition = true;
     }
-    else if( SlamConfig::hasPoints() && !SlamConfig::hasLines() )
+    else if( SlamConfig::hasPoints() )
     {
         if( inl_ratio_pt > SlamConfig::lcInlierRatio() )
             inl_ratio_condition = true;
     }
-    else if( !SlamConfig::hasPoints() && SlamConfig::hasLines() )
+    else if( SlamConfig::hasLines() )
     {
         if( inl_ratio_ls > SlamConfig::lcInlierRatio() )
             inl_ratio_condition = true;
     }
 
-    inl_ratio_condition = true;
+
+    //inl_ratio_condition = true;
     if( inl_ratio_condition )
         return computeRelativePoseRobustGN(lc_points,lc_lines,lc_pt_idx,lc_ls_idx,pose_inc);
     else
@@ -4158,7 +4177,7 @@ bool MapHandler::loopClosureOptimizationEssGraphG2O()
     // fuse local map from both sides of the loop and update graphs
     loopClosureFuseLandmarks();
 
-    lc_status = LC_IDLE;
+    lc_state = LC_IDLE;
 
     return true;
 }
@@ -4385,7 +4404,7 @@ bool MapHandler::loopClosureOptimizationCovGraphG2O()
     // fuse local map from both sides of the loop and update graphs
     loopClosureFuseLandmarks();
 
-    lc_status = LC_IDLE;
+    lc_state = LC_IDLE;
 
     return true;
 }
