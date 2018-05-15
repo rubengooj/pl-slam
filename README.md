@@ -39,7 +39,7 @@ Please do not hesitate to contact the authors if you have any further questions.
 ### OpenCV 3.x.x
 It can be easily found at http://opencv.org. 
 
-### Eigen3
+### Eigen3 (tested with 3.2.92)
 http://eigen.tuxfamily.org
 
 ### Boost
@@ -54,7 +54,7 @@ It can be found at:
 https://github.com/RainerKuemmerle/g2o.git
 ```
 
-### YAML
+### YAML (tested with 0.5.2)
 Installation on Ubuntu:
 ```
 sudo apt-get install libyaml-cpp-dev
