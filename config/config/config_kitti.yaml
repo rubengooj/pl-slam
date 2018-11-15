@@ -10,19 +10,21 @@ max_kf_r_dist         : 15.0
 # -----------------------------------------------------------------------------------------------------
 has_points         : true      # true if using points
 has_lines          : true      # true if using line segments
-use_fld_lines      : false      # true if using FLD detector
+use_fld_lines      : true      # true if using FLD detector
+
 lr_in_parallel     : true      # true if detecting and matching features in parallel
 pl_in_parallel     : true      # true if detecting points and line segments in parallel
 best_lr_matches    : true      # true if double-checking the matches between the two images
 adaptative_fast    : true      # true if using adaptative fast_threshold
+
 use_motion_model   : false     # true if using constant motion model
 
 # Tracking parameters
 # -----------------------------------------------------------------------------------------------------
 # Point feature
-max_dist_epip     : 1.0        # max. epipolar distance in pixels
+max_dist_epip     : 0.0        # max. epipolar distance in pixels
 min_disp          : 1.0        # min. disparity (avoid points in the infinite)
-min_ratio_12_p    : 0.9       # min. ratio between the first and second best matches
+min_ratio_12_p    : 0.75       # min. ratio between the first and second best matches
 
 # Line segment features
 line_sim_th       : 0.75       # threshold for cosine similarity
@@ -44,22 +46,22 @@ fast_err_th       : 0.5        # threshold for the optimization error
 # -----------------------------------------------------------------------------------------------------
 homog_th         : 1e-7        # avoid points in the infinite
 min_features     : 10          # min. number of features to perform StVO
-max_iters        : 5           # max. number of iterations in the first stage of the optimization
-max_iters_ref    : 10          # max. number of iterations in the refinement stage
+max_iters        : 100           # max. number of iterations in the first stage of the optimization
+max_iters_ref    : 100          # max. number of iterations in the refinement stage
 min_error        : 1e-7        # min. error to stop the optimization
 min_error_change : 1e-7        # min. error change to stop the optimization
-inlier_k         : 4.0         # factor to discard outliers before the refinement stage
+inlier_k         : 1.0         # factor to discard outliers before the refinement stage
 
 # Feature detection parameters
 # -----------------------------------------------------------------------------------------------------
-matching_strategy : 3
+matching_strategy : 0
 matching_s_ws     : 10
 matching_f2f_ws   : 3
 
 # ORB detector
 orb_nfeatures    : 800
 orb_scale_factor : 1.2
-orb_nlevels      : 1
+orb_nlevels      : 4
 orb_edge_th      : 19
 orb_wta_k        : 2            # was set to 4
 orb_score        : 1            # 0 - HARRIS  |  1 - FAST
@@ -83,7 +85,7 @@ lsd_n_bins       : 1024
 
 fast_matching         : true
 has_refinement        : false
-mutithread_slam       : true
+mutithread_slam       : false
 
 # lm numbers and errors
 min_lm_obs            : 4

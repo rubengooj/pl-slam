@@ -1,0 +1,40 @@
+# -----------------------------------------------------------------------------------------------------
+# StVO parameters
+# -----------------------------------------------------------------------------------------------------
+has_points         : true      # true if using points
+has_lines          : true      # true if using line segments
+lr_in_parallel     : true      # true if detecting and matching features in parallel
+pl_in_parallel     : true      # true if detecting points and line segments in parallel
+# Tracking parameters
+# -----------------------------------------------------------------------------------------------------
+min_ratio_12_p    : 0.75       # min. ratio between the first and second best matches
+min_ratio_12_l    : 0.75       # parameter to avoid outliers in line matching
+# Optimization parameters
+# -----------------------------------------------------------------------------------------------------
+inlier_k         : 4.0         # factor to discard outliers before the refinement stage
+# Feature detection parameters
+# -----------------------------------------------------------------------------------------------------
+# ORB detector
+orb_nfeatures    : 1200        # number of ORB features to detect
+orb_nlevels      : 4           # number of pyramid levels
+orb_fast_th      : 20          # default FAST threshold
+# LSD parameters
+lsd_nfeatures    : 300         # number of LSD lines detected (set to 0 if keeping all lines)
+# kf decision (SLAM) parameters
+min_entropy_ratio     : 0.85   # entropy ratio for detecting when a new KF is needed
+
+# -----------------------------------------------------------------------------------------------------
+# PLSLAM parameters
+# -----------------------------------------------------------------------------------------------------
+fast_matching         : false   # allow for the fast matching (window-based) of the map features
+mutithread_slam       : true   # if true the system runs with both the VO, LBA and LC in parallel threads
+# graphs parameters
+min_lm_ess_graph      : 150     # minimum number of landmarks for connectivity in Essential graph
+min_lm_cov_graph      : 75      # minimum number of landmarks for connectivity in Covisibility graph
+min_kf_local_map      : 3       # min number of landmarks for the local mapping
+# Loop closure
+vocabulary_p          : "/home/ruben/code/pl-slam-dev/vocabulary/mapir_orb.yml"
+vocabulary_l          : "/home/ruben/code/pl-slam-dev/vocabulary/mapir_lsd.yml"
+lc_inl                : 0.3     # minimum inlier ratio in relative pose estimation
+lc_nkf_closest        : 4       # number of KFs closest to the match to consider it as positive
+lc_inlier_ratio       : 30.0    # inlier ratio to consider or not a loop closure

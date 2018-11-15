@@ -40,7 +40,7 @@ SlamConfig::SlamConfig()
 
     // SLAM parameters
     // -----------------------------------------------------------------------------------------------------
-    fast_matching         = true;       // allow for the fast matching (window-based) of the map features
+    fast_matching         = false;      // allow for the fast matching (window-based) of the map features
     has_refinement        = false;      // refine the pose between keyframes (disabled as it is also performed by the LBA)
     mutithread_slam       = true;       // if true the system runs with both the VO, LBA and LC in parallel threads
 
@@ -48,45 +48,42 @@ SlamConfig::SlamConfig()
     min_lm_obs            = 5;          // min number of observations for a landmark to be considered as inlier
     max_common_fts_kf     = 0.9;        // max number of common features for a keyframe to be considered redundant (disabled)
 
-    max_kf_epip_p         = 1.0;
-    max_kf_epip_l         = 1.0;
+    max_kf_epip_p         = 1.0;        // max epip distance for points in LBA
+    max_kf_epip_l         = 1.0;        // max epip distance for line segments in LBA
 
-    max_lm_3d_err         = 0.1;
-    max_lm_dir_err        = 0.1;
-    max_point_point_error = 0.1;
-    max_point_line_error  = 0.1;
-    max_dir_line_error    = 0.1;
+    max_point_point_error = 0.1;        // maximum distance to fuse landmarks from local map (points)
+    max_point_line_error  = 0.1;        // maximum distance to fuse landmarks from local map (lines)
+    max_dir_line_error    = 0.1;        // maximum angle in line direction to fuse landmarks from local map
+    kf_inlier_ratio       = 30.0;       // ratio of inliers to fuse local landmarks
 
     // graphs parameters
-    min_lm_ess_graph      = 150;
-    min_lm_cov_graph      = 75;
-    min_kf_local_map      = 3;
+    min_lm_ess_graph      = 150;        // minimum number of landmarks for connectivity in Essential graph
+    min_lm_cov_graph      = 75;         // minimum number of landmarks for connectivity in Covisibility graph
+    min_kf_local_map      = 3;          // min number of landmarks for the local mapping
 
     // LBA
-    lambda_lba_lm         = 0.00001;
-    lambda_lba_k          = 10.0;
-    max_iters_lba         = 15;
+    lambda_lba_lm         = 0.00001;    // (if auto, this is the initial tau)
+    lambda_lba_k          = 10.0;       // lambda_k for LM method in LBA
+    max_iters_lba         = 15;         // maximum number of iterations
 
     // Loop closure
     vocabulary_p          = "/home/ruben/code/pl-slam-dev/vocabulary/mapir_orb.yml";
     vocabulary_l          = "/home/ruben/code/pl-slam-dev/vocabulary/mapir_lsd.yml";
 
-    lc_mat                = 0.5;
-    lc_res                = 1.5;
-    lc_unc                = 0.01;
-    lc_inl                = 0.3;
-    lc_trs                = 1.5;
-    lc_rot                = 35.0;
+    lc_res                = 1.0;        // maximum residue in relative pose estimation
+    lc_unc                = 0.01;       // maximum uncertainty value in relative pose estimation
+    lc_inl                = 0.3;        // minimum inlier ratio in relative pose estimation
+    lc_trs                = 1.5;        // maximum translation in relative pose estimation
+    lc_rot                = 35.0;       // maximum rotation in relative pose estimation
 
-    max_iters_pgo         = 100;
-    lc_kf_dist            = 50;
-    lc_kf_max_dist        = 50;
-    lc_nkf_closest        = 4;
-    lc_inlier_ratio       = 30.0;
+    max_iters_pgo         = 100;        // maximum number of iterations of the PGO
+    lc_kf_dist            = 50;         // minimum number of KFs from prev LC
+    lc_kf_max_dist        = 50;         // max distance from last LC KF
+    lc_nkf_closest        = 4;          // number of KFs closest to the match to consider it as positive
+    lc_inlier_ratio       = 30.0;       // inlier ratio to consider or not a loop closure
 
-    min_pt_matches        = 10;
-    min_ls_matches        = 6;
-    kf_inlier_ratio       = 30.0;
+    min_pt_matches        = 10;         // min number of point observations
+    min_ls_matches        = 6;          // min number of line segment observations
 }
 
 SlamConfig::~SlamConfig(){}

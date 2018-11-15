@@ -1,0 +1,133 @@
+# -----------------------------------------------------------------------------------------------------
+# StVO parameters
+# -----------------------------------------------------------------------------------------------------
+# kf decision (SLAM) parameters
+min_entropy_ratio     : 0.85   # entropy ratio for detecting when a new KF is needed
+max_kf_t_dist         : 5.0    # max distance (tran) from previous KF to insert a new KF
+max_kf_r_dist         : 15.0   # max distance (rot) from previous KF to insert a new KF
+
+# StVO-PL options
+# -----------------------------------------------------------------------------------------------------
+has_points         : true      # true if using points
+has_lines          : true      # true if using line segments
+use_fld_lines      : false     # true if using FLD detector
+lr_in_parallel     : true      # true if detecting and matching features in parallel
+pl_in_parallel     : true      # true if detecting points and line segments in parallel
+best_lr_matches    : true      # true if double-checking the matches between the two images
+adaptative_fast    : true      # true if using adaptative fast_threshold
+use_motion_model   : false     # true if using constant motion model
+
+# Tracking parameters
+# -----------------------------------------------------------------------------------------------------
+# Point features
+max_dist_epip     : 0.0        # max. epipolar distance in pixels
+min_disp          : 1.0        # min. disparity (avoid points in the infinite)
+min_ratio_12_p    : 0.75       # min. ratio between the first and second best matches
+
+# Line segment features
+line_sim_th       : 0.75       # threshold for cosine similarity
+stereo_overlap_th : 0.75
+f2f_overlap_th    : 0.75
+min_line_length   : 0.025      # min. line length (relative to img size)
+line_horiz_th     : 1.0        # parameter to avoid horizontal lines (pixels)
+min_ratio_12_l    : 0.75       # parameter to avoid outliers in line matching
+ls_min_disp_ratio : 0.7        # min ratio between min(disp)/max(disp) for a LS
+
+# Adaptative FAST parameters
+fast_min_th       : 5          # min. value for FAST threshold
+fast_max_th       : 50         # max. value for FAST threshold
+fast_inc_th       : 5          # base increment for the FAST threshold
+fast_feat_th      : 50         # base number of features to increase/decrease FAST threshold
+fast_err_th       : 0.5        # threshold for the optimization error
+
+# Optimization parameters
+# -----------------------------------------------------------------------------------------------------
+homog_th         : 1e-7        # avoid points in the infinite
+min_features     : 10          # min. number of features to perform StVO
+max_iters        : 5           # max. number of iterations in the first stage of the optimization
+max_iters_ref    : 10          # max. number of iterations in the refinement stage
+min_error        : 1e-7        # min. error to stop the optimization
+min_error_change : 1e-7        # min. error change to stop the optimization
+inlier_k         : 4.0         # factor to discard outliers before the refinement stage
+
+# Feature detection parameters
+# -----------------------------------------------------------------------------------------------------
+matching_stereo   : 0          # 0 - pure descriptor based  |  1 - window based plus descriptor
+matching_s_ws     : 10         # size of the windows (in pixels) to look for stereo matches (if matching_stereo=1)
+matching_f2f_ws   : 3          # size of the windows (in pixels) to look for f2f matches
+
+# ORB detector
+orb_nfeatures    : 1200        # number of ORB features to detect
+orb_scale_factor : 1.2         # pyramid decimation ratio for the ORB detector
+orb_nlevels      : 4           # number of pyramid levels
+orb_edge_th      : 19          # size of the border where the features are not detected
+orb_wta_k        : 2           #  number of points that produce each element of the oriented BRIEF descriptor 
+orb_score        : 1           # 0 - HARRIS  |  1 - FAST
+orb_patch_size   : 31          # size of the patch used by the oriented BRIEF descriptor.
+orb_fast_th      : 20          # default FAST threshold
+
+# LSD parameters
+lsd_nfeatures    : 300         # number of LSD lines detected (set to 0 if keeping all lines)
+lsd_refine       : 0           # the way of refining or not the detected lines
+lsd_scale        : 1.2         # scale of the image that will be used to find the lines
+lsd_sigma_scale  : 0.6         # sigma for Gaussian filter
+lsd_quant        : 2.0         # bound to the quantization error on the gradient norm
+lsd_ang_th       : 22.5        # gradient angle tolerance in degrees
+lsd_log_eps      : 1.0         # detection threshold (only for advanced refinement)
+lsd_density_th   : 0.6         # minimal density of aligned region points in the enclosing rectangle
+lsd_n_bins       : 1024        # number of bins in pseudo-ordering of gradient modulus
+
+
+
+# -----------------------------------------------------------------------------------------------------
+# PLSLAM parameters
+# -----------------------------------------------------------------------------------------------------
+
+fast_matching         : true   # allow for the fast matching (window-based) of the map features
+has_refinement        : false  # refine the pose between keyframes (disabled as it is also performed by the LBA)
+mutithread_slam       : true   # if true the system runs with both the VO, LBA and LC in parallel threads
+
+# lm numbers and errors
+min_lm_obs            : 5      # min number of observations for a landmark to be considered as inlier
+max_common_fts_kf     : 0.9    # max number of common features for a keyframe to be considered redundant (disabled)
+
+max_kf_epip_p         : 1.0    # max epip distance for points in LBA
+max_kf_epip_l         : 1.0    # max epip distance for line segments in LBA
+
+max_point_point_error : 0.1    # maximum distance to fuse landmarks from local map (points)
+max_point_line_error  : 0.1    # maximum distance to fuse landmarks from local map (lines)
+max_dir_line_error    : 0.1    # maximum angle in line direction to fuse landmarks from local map
+kf_inlier_ratio       : 30.0   # ratio of inliers to fuse local landmarks
+
+# graphs parameters
+min_lm_ess_graph      : 150     # minimum number of landmarks for connectivity in Essential graph
+min_lm_cov_graph      : 75      # minimum number of landmarks for connectivity in Covisibility graph
+min_kf_local_map      : 3       # min number of landmarks for the local mapping
+
+# LBA
+lambda_lba_lm         : 0.00001 # (if auto, this is the initial tau)
+lambda_lba_k          : 10.0    # lambda_k for LM method in LBA
+max_iters_lba         : 15      # maximum number of iterations
+
+# Loop closure
+vocabulary_p          : "/home/ruben/code/pl-slam-dev/vocabulary/mapir_orb.yml"
+vocabulary_l          : "/home/ruben/code/pl-slam-dev/vocabulary/mapir_lsd.yml"
+
+lc_res                : 1.0     # maximum residue in relative pose estimation
+lc_unc                : 0.01    # maximum uncertainty value in relative pose estimation
+lc_inl                : 0.3     # minimum inlier ratio in relative pose estimation
+lc_trs                : 1.5     # maximum translation in relative pose estimation
+lc_rot                : 35.0    # maximum rotation in relative pose estimation
+
+max_iters_pgo         : 100     # maximum number of iterations of the PGO
+lc_kf_dist            : 50      # minimum number of KFs from prev LC 
+lc_kf_max_dist        : 50      # max distance from last LC KF
+lc_nkf_closest        : 4       # number of KFs closest to the match to consider it as positive
+lc_inlier_ratio       : 30.0    # inlier ratio to consider or not a loop closure
+
+min_pt_matches        : 10      # min number of point observations 
+min_ls_matches        : 6       # min number of line segment observations 
+
+
+
+
