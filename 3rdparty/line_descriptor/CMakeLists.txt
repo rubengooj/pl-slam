@@ -18,10 +18,10 @@ set(LIBRARY_OUTPUT_PATH    ${PROJECT_SOURCE_DIR}/lib)
 
 include_directories( include ${OpenCV_INCLUDE_DIRS} )
 list(APPEND LINK_LIBS ${OpenCV_LIBS} )
-file(GLOB_RECURSE all_include_files RELATIVE "${CMAKE_SOURCE_DIR}" *.h *.hpp)
+file(GLOB_RECURSE all_include_files RELATIVE "${PROJECT_SOURCE_DIR}" *.h *.hpp)
 
 link_directories(${CMAKE_SOURCE_DIR}/src/)
-file(GLOB_RECURSE all_source_files RELATIVE "${CMAKE_SOURCE_DIR}src/" *.cpp )
+file(GLOB_RECURSE all_source_files RELATIVE "${PROJECT_SOURCE_DIR}src/" *.cpp )
 
 add_custom_target( linedesc_includes DEPENDS ${all_include_files} SOURCES ${all_source_files} )
 

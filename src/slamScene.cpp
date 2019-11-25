@@ -111,6 +111,9 @@ slamScene::~slamScene(){
 
 void slamScene::initializeScene(Matrix4d x_0){
 
+    using mrpt::img::TColor;
+    using mrpt::img::TColorf;
+
     // Initialize the scene and window
     win->setCameraElevationDeg(selev);
     win->setCameraAzimuthDeg(sazim);
@@ -124,9 +127,9 @@ void slamScene::initializeScene(Matrix4d x_0){
     pose_0  = x_aux;
     pose_gt = pose_ini;
     x_ini   = x_0;
-    pose.getAsVector(v_aux);
-    pose1.getAsVector(v_aux1);
-    pose_gt.getAsVector(v_auxgt);
+    pose.asVector(v_aux);
+    pose1.asVector(v_aux1);
+    pose_gt.asVector(v_auxgt);
 
     // Initialize the camera object
     frustumL_.setFromValues(0,0,0,  0, -90.f*CV_PI/180.f, -90.f*CV_PI/180.f);
@@ -216,6 +219,8 @@ void slamScene::initViewports(int W, int H){
 
 bool slamScene::updateScene(){
 
+    using mrpt::img::TColor;
+
     theScene = win->get3DSceneAndLock();
     bool restart = false;
 
@@ -227,7 +232,7 @@ bool slamScene::updateScene(){
         CPose3D x_aux1(getPoseFormat(x));
         pose = pose + x_aux1;
         v_aux_ = v_aux;
-        pose.getAsVector(v_aux);
+        pose.asVector(v_aux);
         frustObj  = opengl::CFrustum::Create();
         {
             frustObj->setPose(pose+frustumL_);
@@ -260,6 +265,8 @@ bool slamScene::updateScene(){
 
 bool slamScene::updateSceneVO( Matrix4d T_last_kf ){
 
+    using mrpt::img::TColor;
+
     theScene = win->get3DSceneAndLock();
     bool restart = false;
 
@@ -272,7 +279,7 @@ bool slamScene::updateSceneVO( Matrix4d T_last_kf ){
         CPose3D x_aux1(getPoseFormat(x));
         pose = pose + x_aux1;
         v_aux_ = v_aux;
-        pose.getAsVector(v_aux);
+        pose.asVector(v_aux);
         frustObj  = opengl::CFrustum::Create();
         {
             frustObj->setPose(pose+frustumL_);
@@ -305,6 +312,9 @@ bool slamScene::updateSceneVO( Matrix4d T_last_kf ){
 
 bool slamScene::updateScene(const MapHandler* map){
 
+    using mrpt::img::TColor;
+    using mrpt::img::TColorf;
+
     theScene = win->get3DSceneAndLock();
     bool restart = false;
 
@@ -330,7 +340,7 @@ bool slamScene::updateScene(const MapHandler* map){
             if( (*it)->kf_idx == map->map_keyframes.back()->kf_idx )
             {
                 kf_pose = CPose3D( getPoseFormat( (*it)->T_kf_w ) );
-                opengl::CFrustumPtr frust_ = opengl::CFrustum::Create();
+                auto frust_ = opengl::CFrustum::Create();
                 {
                     frust_->setPose( kf_pose + frustumL_ );
                     frust_->setLineWidth (slinef);
@@ -368,7 +378,7 @@ bool slamScene::updateScene(const MapHandler* map){
             else
             {
                 kf_pose = CPose3D( getPoseFormat( (*it)->T_kf_w ) );
-                opengl::CFrustumPtr frust_ = opengl::CFrustum::Create();
+                opengl::CFrustum::Ptr frust_ = opengl::CFrustum::Create();
                 {
                     frust_->setPose( kf_pose + frustumL_ );
                     frust_->setLineWidth (slinef);
@@ -475,7 +485,7 @@ bool slamScene::updateScene(const MapHandler* map){
         else if ( (key ==  97) || (key == 65) ){    // A        axes
             hasAxes   = !hasAxes;
             if(!hasAxes){
-                axesObj.clear();
+                axesObj.reset();
             }
             else{
                 axesObj = opengl::CAxis::Create();
@@ -488,7 +498,7 @@ bool slamScene::updateScene(const MapHandler* map){
         else if ( (key == 112) || (key == 80) ){    // P        points
             hasPoints = !hasPoints;
             if(!hasPoints){
-                elliObjP.clear();
+                elliObjP.reset();
             }
             else{
                 elliObjP = opengl::CSetOfObjects::Create();
@@ -500,7 +510,7 @@ bool slamScene::updateScene(const MapHandler* map){
         else if ( (key == 108) || (key == 76) ){    // L        lines
             hasLines  = !hasLines;
             if(!hasLines){
-                elliObjL.clear();
+                elliObjL.reset();
             }
             else{
                 elliObjL = opengl::CSetOfObjects::Create();
@@ -540,6 +550,9 @@ bool slamScene::updateScene(const MapHandler* map){
 
 bool slamScene::updateSceneSafe(const MapHandler* map){
 
+    using mrpt::img::TColor;
+    using mrpt::img::TColorf;
+
     theScene = win->get3DSceneAndLock();
     bool restart = false;
 
@@ -569,7 +582,7 @@ bool slamScene::updateSceneSafe(const MapHandler* map){
             if( (*it)->kf_idx == map->map_keyframes.back()->kf_idx )
             {
                 kf_pose = CPose3D( getPoseFormat( (*it)->T_kf_w ) );
-                opengl::CFrustumPtr frust_ = opengl::CFrustum::Create();
+                opengl::CFrustum::Ptr frust_ = opengl::CFrustum::Create();
                 {
                     frust_->setPose( kf_pose + frustumL_ );
                     frust_->setLineWidth (slinef);
@@ -607,7 +620,7 @@ bool slamScene::updateSceneSafe(const MapHandler* map){
             else
             {
                 kf_pose = CPose3D( getPoseFormat( (*it)->T_kf_w ) );
-                opengl::CFrustumPtr frust_ = opengl::CFrustum::Create();
+                opengl::CFrustum::Ptr frust_ = opengl::CFrustum::Create();
                 {
                     frust_->setPose( kf_pose + frustumL_ );
                     frust_->setLineWidth (slinef);
@@ -712,7 +725,7 @@ bool slamScene::updateSceneSafe(const MapHandler* map){
         else if ( (key ==  97) || (key == 65) ){    // A        axes
             hasAxes   = !hasAxes;
             if(!hasAxes){
-                axesObj.clear();
+                axesObj.reset();
             }
             else{
                 axesObj = opengl::CAxis::Create();
@@ -725,7 +738,7 @@ bool slamScene::updateSceneSafe(const MapHandler* map){
         else if ( (key == 112) || (key == 80) ){    // P        points
             hasPoints = !hasPoints;
             if(!hasPoints){
-                elliObjP.clear();
+                elliObjP.reset();
             }
             else{
                 elliObjP = opengl::CSetOfObjects::Create();
@@ -737,7 +750,7 @@ bool slamScene::updateSceneSafe(const MapHandler* map){
         else if ( (key == 108) || (key == 76) ){    // L        lines
             hasLines  = !hasLines;
             if(!hasLines){
-                elliObjL.clear();
+                elliObjL.reset();
             }
             else{
                 elliObjL = opengl::CSetOfObjects::Create();
@@ -777,6 +790,7 @@ bool slamScene::updateSceneSafe(const MapHandler* map){
 
 void slamScene::updateSceneGraphs( const MapHandler* map )
 {
+    using mrpt::img::TColor;
 
     // Reset scene
     theScene = win->get3DSceneAndLock();
@@ -794,7 +808,7 @@ void slamScene::updateSceneGraphs( const MapHandler* map )
         if( (*it)!=NULL )
         {
             kf_pose = CPose3D( getPoseFormat( (*it)->T_kf_w ) );
-            opengl::CFrustumPtr frust_ = opengl::CFrustum::Create();
+            opengl::CFrustum::Ptr frust_ = opengl::CFrustum::Create();
             {
                 frust_->setPose( kf_pose + frustumL_ );
                 frust_->setLineWidth (slinef);
@@ -821,7 +835,7 @@ void slamScene::updateSceneGraphs( const MapHandler* map )
                 {
                     Vector3d Pi = map->map_keyframes[i]->T_kf_w.col(3).head(3);
                     Vector3d Pj = map->map_keyframes[j]->T_kf_w.col(3).head(3);
-                    opengl::CSimpleLinePtr obj = opengl::CSimpleLine::Create();
+                    opengl::CSimpleLine::Ptr obj = opengl::CSimpleLine::Create();
                     obj->setLineCoords(Pi(0),Pi(1),Pi(2), Pj(0),Pj(1),Pj(2));
                     obj->setLineWidth(0.5f);
                     obj->setColor(0,0.5,0);
@@ -869,7 +883,7 @@ void slamScene::updateSceneGraphs( const MapHandler* map )
 
     // Update the image
     if(hasImg)
-        image->setImageView_fast( img_mrpt_image );
+        image->setImageView( std::move(img_mrpt_image) );
 
     // Re-paint the scene
     win->unlockAccess3DScene();
@@ -942,7 +956,7 @@ void slamScene::setLegend(){
         if(hasComparison){
             img_legend = "../config/aux/legend_comp.png";
             img_mrpt_legend.loadFromFile(img_legend,1);
-            legend->setImageView_fast( img_mrpt_legend );
+            legend->setImageView( std::move(img_mrpt_legend) );
         }
         else
             img_mrpt_legend.loadFromFile("",1);
@@ -950,12 +964,12 @@ void slamScene::setLegend(){
     else if(hasComparison){
         img_legend = "../config/aux/legend_full.png";
         img_mrpt_legend.loadFromFile(img_legend,1);
-        legend->setImageView_fast( img_mrpt_legend );
+        legend->setImageView( std::move(img_mrpt_legend) );
     }
     else{
         img_legend = "../config/aux/legend.png";
         img_mrpt_legend.loadFromFile(img_legend,1);
-        legend->setImageView_fast( img_mrpt_legend );
+        legend->setImageView( std::move(img_mrpt_legend) );
     }
 }
 
@@ -964,7 +978,7 @@ void slamScene::setHelp(){
     help = theScene->createViewport("help");
     img_help = "../config/aux/help.png";
     img_mrpt_help.loadFromFile(img_help,1);
-    help->setImageView_fast( img_mrpt_help );
+    help->setImageView( std::move(img_mrpt_help) );
     if(hasHelp)
         help->setViewportPosition(1600, 20, 300, 376);
     else
@@ -992,7 +1006,7 @@ void slamScene::setLines(CMatrixFloat lData_){
 
 void slamScene::setKF(Matrix4d Tfw){
     // Initialize the camera object
-    opengl::CSetOfObjectsPtr kfbb = opengl::stock_objects::BumblebeeCamera();
+    opengl::CSetOfObjects::Ptr kfbb = opengl::stock_objects::BumblebeeCamera();
     {
         CPose3D pose( getPoseFormat(Tfw) );
         kfbb->setPose( pose );
@@ -1047,6 +1061,7 @@ bool slamScene::getYPR(float &yaw, float &pitch, float &roll){
     yaw   = y;
     pitch = p;
     roll  = r;
+    return true;
 }
 
 bool slamScene::getPose(Matrix4d &T){
@@ -1057,6 +1072,7 @@ bool slamScene::getPose(Matrix4d &T){
             T(i,j) = T_(i,j);
         }
     }
+    return true;
 }
 
 }

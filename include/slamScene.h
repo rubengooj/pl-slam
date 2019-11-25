@@ -26,12 +26,12 @@ using namespace std;
 #include <mrpt/opengl.h>
 #include <mrpt/opengl/CPointCloudColoured.h>
 #include <mrpt/gui.h>
-#include <mrpt/utils/CConfigFile.h>
-#include <mrpt/utils/CConfigFileBase.h>
+#include <mrpt/config/CConfigFile.h>
+#include <mrpt/config/CConfigFileBase.h>
 using namespace mrpt;
 using namespace mrpt::gui;
 using namespace mrpt::poses;
-using namespace mrpt::utils;
+using namespace mrpt::config;
 using namespace mrpt::math;
 using namespace mrpt::opengl;
 
@@ -89,20 +89,19 @@ public:
     CPose3D getPoseXYZ(VectorXd x);
 
     CDisplayWindow3D*           win;
-    COpenGLScenePtr             theScene;
-    COpenGLViewportPtr          image, legend, help;
-    opengl::CSetOfObjectsPtr    bbObj, bbObj1, srefObj, srefObj1, gtObj, srefObjGT, elliObjL, elliObjP;
-    opengl::CEllipsoidPtr       elliObj;
-    opengl::CFrustumPtr         frustObj, frustObj1;
-    opengl::CAxisPtr            axesObj;
+    COpenGLScene::Ptr             theScene;
+    COpenGLViewport::Ptr          image, legend, help;
+    opengl::CSetOfObjects::Ptr    bbObj, bbObj1, srefObj, srefObj1, gtObj, srefObjGT, elliObjL, elliObjP;
+    opengl::CEllipsoid::Ptr       elliObj;
+    opengl::CFrustum::Ptr         frustObj, frustObj1;
+    opengl::CAxis::Ptr            axesObj;
 
-    opengl::CSetOfLinesPtr      lineObj, lineObj_local, kfsLinesObj, voLinesObj;
-    opengl::CPointCloudPtr      pointObj, pointObj_local;
-    opengl::CSetOfObjectsPtr    kfsObj;
-
+    opengl::CSetOfLines::Ptr      lineObj, lineObj_local, kfsLinesObj, voLinesObj;
+    opengl::CPointCloud::Ptr      pointObj, pointObj_local;
+    opengl::CSetOfObjects::Ptr    kfsObj;
 
     float           sbb, saxis, srad, sref, sline, sfreq, szoom, selli, selev, sazim, sfrust, slinef;
-    CVectorDouble   v_aux, v_aux_, v_aux1, v_aux1_, v_auxgt, gt_aux_, v_auxgt_;
+    CVectorFixedDouble<6> v_aux, v_aux_, v_aux1, v_aux1_, v_auxgt, gt_aux_, v_auxgt_;
     CPose3D         pose, pose_0, pose_gt, pose_ini, ellPose, pose1,  change, frustumL_, frustumR_;
     Matrix4d        x_ini;
     mrptKeyModifier kmods;
@@ -116,7 +115,7 @@ public:
     float           time;
     string          img, img_legend, img_help;
     CMatrixFloat    lData, pData;
-    CImage          img_mrpt_legend, img_mrpt_image, img_mrpt_help;
+    mrpt::img::CImage img_mrpt_legend, img_mrpt_image, img_mrpt_help;
 
     float           b, sigmaP, sigmaL, f, cx, cy, bsigmaL, bsigmaP;
 

@@ -37,7 +37,7 @@ Please do not hesitate to contact the authors if you have any further questions.
 ## 1. Prerequisites and dependencies
 
 ### OpenCV 3.x.x
-It can be easily found at http://opencv.org. 
+It can be easily found at http://opencv.org.
 
 ### Eigen3 (tested with 3.2.92)
 http://eigen.tuxfamily.org
@@ -61,19 +61,23 @@ sudo apt-get install libyaml-cpp-dev
 ```
 
 ### stvo-pl
-It can be found at: 
+It can be found at:
 ```
 https://github.com/rubengooj/stvo-pl
 ```
 
-### MRPT
-In case of using the provided representation class. 
-Download and install instructions can be found at: http://www.mrpt.org/
+### MRPT (>=v1.9.9)
+Optional: Enables the provided visualization class.
 
-#### Known Issues:
-If working with the most recent versions of the MRPT library you might find some issues due to hard refactoring, for which we recommend to use this version instead (the last one we tested):
+1) Only for Ubuntu 16.04 Xenial: upgrade gcc. Instructions [here](https://gist.github.com/jlblancoc/99521194aba975286c80f93e47966dc5).
+2) For any Ubuntu version older than 20.04 Focal:
 ```
-https://github.com/MRPT/mrpt/tree/0c3d605c3cbf5f2ffb8137089e43ebdae5a55de3
+sudo add-apt-repository ppa:joseluisblancoc/mrpt
+sudo apt-get update
+```
+3) Everyone: Install mrpt libraries:
+```
+sudo apt-get install libmrpt-dev
 ```
 
 ### Line Descriptor
@@ -106,4 +110,3 @@ A full command would be:
 ./plslam_dataset kitti/00 -c ../config/config_kitti.yaml -o 100 -s 2 -n 1000
 
 where we are processing the sequence 00 from the KITTI dataset (in our dataset folders) with the custom config file, with an offset *-c* allowing to skip the first 100 images, a parameter *-s* to consider only one every 2 images, and a parameter *-n* to only consider 1000 input pairs.
-
